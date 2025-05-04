@@ -160,7 +160,7 @@ run_chain_betas <- function(N,
                             distance_metric  = "manhattan",
                             mc_cores         = 1) {
   # y must be a list of matrices
-  if (!is.list(y)) stop("'y' must be a list of N×N matrices.")
+  if (!is.list(y)) stop("'y' must be a list of N by N matrices.")
   
   # dispatch each element of y to its own chain
   results <- parallel::mclapply(seq_along(y), function(i) {
