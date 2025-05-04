@@ -17,7 +17,7 @@ Hi‑C interaction counts are
 
 **HMRFHiC** deals with these challenges by combining
 
-| Layer | Details (fixed **K = 3** components) |
+| Layer | Details |
 |-------|---------------------------------------|
 | **Spatial layer** | **Potts model** (Wu 1982) with interaction parameter \(\gamma\) to capture neighbourhood dependence. |
 | **Count layer** | Mixture of three components (“noise”, “signal”, “false‑positive”) modelled with Poisson | NB | ZIP | ZINB. |
@@ -60,10 +60,13 @@ res <- run_chain_betas(
 )
 ```
 
+```mermaid
 graph TD
-  A[Long‑format table] --> B(process_data)
-  B --> C(run_chain_betas<br/>(K = 3))
-  C --> D[Posterior summaries<br/>+ probability maps]
+  A[get_data] --> B[process_data]
+  B --> C[run_chain_betas]
+  C --> D[Posterior summaries + probability maps]
+```
+
 
 Key exported functions
 
