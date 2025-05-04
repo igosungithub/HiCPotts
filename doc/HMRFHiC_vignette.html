@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Itunu G. Osuntoki" />
+
+<meta name="date" content="2025-04-29" />
+
+<title>Bayesian Analysis of Hi-C Interactions with HMRFHiC</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Bayesian Analysis of Hi-C Interactions with
+HMRFHiC</h1>
+<h4 class="author">Itunu G. Osuntoki</h4>
+<h4 class="date">2025-04-29</h4>
+
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>The HMRFHiC package provides a comprehensive framework for Bayesian
+analysis of Hi-C interaction data using a Hidden Markov Random Field
+(HMRF) model. Hi-C is a high-throughput sequencing technique that
+captures chromatin interactions across the genome, revealing spatial
+organization. The package models these interactions using a mixture of
+distributions (Poisson, Negative Binomial, Zero-Inflated Poisson, or
+Zero-Inflated Negative Binomial) while accounting for covariates such as
+genomic distance, GC content, accessibility, and transposable element
+(TE) counts. The HMRF framework incorporates spatial dependencies via a
+Potts model, and the package employs Markov Chain Monte Carlo (MCMC)
+methods for parameter estimation, with performance optimized through C++
+implementations using Rcpp and RcppArmadillo.</p>
+<p>This vignette demonstrates the end-to-end workflow of the HMRFHiC
+package:</p>
+<ol style="list-style-type: decimal">
+<li><p>Loading and annotating Hi-C data with covariates using
+get_data().</p></li>
+<li><p>Processing data into matrix form with process_data().</p></li>
+<li><p>Running MCMC simulations with run_chain_betas() and
+run_metropolis_MCMC_betas().</p></li>
+<li><p>Computing posterior probabilities for mixture component
+assignments with compute_HMRFHiC_probabilities().</p></li>
+</ol>
+<p>The package supports parallel processing and flexible distribution
+choices, making it suitable for large-scale genomic analyses. We assume
+familiarity with R and Hi-C data, but provide brief introductions to
+HMRF and Bayesian concepts where necessary.</p>
+</div>
+<div id="installation" class="section level1">
+<h1>Installation</h1>
+<p>HMRFHiC depends on several CRAN and Bioconductor packages.</p>
+<p>Install them as follows:</p>
+<p>Install CRAN dependencies</p>
+<p>install.packages(c(“Rcpp”, “RcppArmadillo”, “parallel”))</p>
+<p>Install Bioconductor dependencies</p>
+<p>if (!requireNamespace(“BiocManager”, quietly = TRUE))
+install.packages(“BiocManager”) BiocManager::install(c(“rhdf5”,
+“strawr”, “rtracklayer”, “GenomicRanges”, “BSgenome”, “Biostrings”))</p>
+<p>Install HMRFHiC (replace with actual installation instructions)</p>
+<p>devtools::install_github(“your-repo/HMRFHiC”)</p>
+</div>
+<div id="load-the-package" class="section level1">
+<h1>Load the package:</h1>
+<p>library(HMRFHiC)</p>
+</div>
+<div id="background-hmrf-and-bayesian-modeling" class="section level1">
+<h1>Background: HMRF and Bayesian Modeling</h1>
+<p>Hidden Markov Random Field (HMRF): An HMRF models spatial
+dependencies in a lattice (e.g., a matrix of Hi-C interactions) by
+assigning each site to one of several latent states (mixture
+components). The Potts model governs spatial interactions, encouraging
+neighboring sites to share the same state, controlled by an interaction
+parameter ().</p>
+<p>Bayesian Inference: The package uses MCMC to estimate model
+parameters (regression coefficients (), zero-inflation parameter (),
+dispersion parameter for Negative Binomial distributions, and ()) by
+sampling from their posterior distributions. Covariates like genomic
+distance and GC content adjust for biases in interaction counts.</p>
+<p>Mixture Models: Each Hi-C interaction is modeled as belonging to one
+of three mixture components, each following a specified distribution
+(e.g., Zero-Inflated Negative Binomial for sparse data). This captures
+heterogeneity in interaction patterns.</p>
+</div>
+<div id="workflow-overview" class="section level1">
+<h1>Workflow Overview</h1>
+<p>The HMRFHiC workflow involves four main steps:</p>
+<ol style="list-style-type: decimal">
+<li><p>Data Loading: Use get_data() to read Hi-C contact matrices (.hic,
+.cool, .h5) and annotate bins with GC content, accessibility, and TE
+counts.</p></li>
+<li><p>Data Processing: Use process_data() to convert the data into (N
+N) matrices of interactions and covariates.</p></li>
+<li><p>MCMC Simulation: Use run_chain_betas() to run MCMC chains,
+estimating parameters and latent state assignments.</p></li>
+<li><p>Probability Computation: Use compute_HMRFHiC_probabilities() to
+calculate posterior probabilities of component assignments.</p></li>
+</ol>
+<p>We’ll demonstrate this workflow using synthetic Hi-C data for
+simplicity.</p>
+<p>Step 1: Loading Hi-C Data</p>
+<p>The get_data() function reads Hi-C contact matrices and annotates
+bins with covariates. For this vignette, we simulate a small dataset
+instead of using real Hi-C files, which require specific file formats
+and genome annotations.</p>
+<p>Simulate a 10x10 Hi-C dataset</p>
+<p>set.seed(123)</p>
+<p>N &lt;- 10</p>
+<p>bins &lt;- seq(1, 20000, by = 2000)</p>
+<p>data &lt;- expand.grid(start = bins, start.j. = bins)</p>
+<p>data$end.i. &lt;- data$start + 1999</p>
+<p>data$end &lt;- data$start.j. + 1999</p>
+<p>data$chrom &lt;- “chr2L”</p>
+<p>data$GC &lt;- runif(nrow(data), 0.3, 0.7) #Simulated GC content</p>
+<p>data$ACC &lt;- runif(nrow(data), 0, 1) #Simulated accessibility</p>
+<p>data$TES &lt;- rpois(nrow(data), 2) #Simulated TE counts</p>
+<p>data$interactions &lt;- rpois(nrow(data), lambda = 5) #Simulated
+interaction counts</p>
+<p>head(data)</p>
+<p>In practice, you would use get_data() to load real Hi-C data:</p>
+<p>#Example (not run) #data &lt;- get_data( # file_path =
+“path/to/hic_file.h5”, # chr = “chr2L”, # start = 1, # end = 20000, #
+resolution = 2000, # genome_package = “BSgenome.Dmelanogaster.UCSC.dm6”,
+# acc_wig = “path/to/dnase.wig”, # chain_file = “path/to/chain.file”, #
+te_granges = “path/to/te.gtf” #)</p>
+<p>Step 2: Processing Data</p>
+<p>The process_data() function converts the data frame into a list of (N
+<span class="math inline">\(\times\)</span> N) matrices for interactions
+(y) and covariates (x_vars), optionally scaling interaction counts.</p>
+<p>processed &lt;- process_data(data, N = N, scale_max = 500,
+standardization_y = TRUE)</p>
+<p>x_vars &lt;- processed$x_vars</p>
+<p>y &lt;- processed$y[[1]] # Single matrix for this example</p>
+<p>str(x_vars) # Lists of distance, GC, TES, ACC matrices</p>
+<p>This produces matrices for distance, GC, TES, ACC, and interaction
+counts, ready for MCMC.</p>
+<p>Step 3: Running MCMC Simulations</p>
+<p>The run_chain_betas() function runs MCMC simulations, calling
+run_metropolis_MCMC_betas() to estimate parameters ((<span class="math inline">\(\beta\)</span>), (<span class="math inline">\(\gamma\)</span>), (<span class="math inline">\(\theta\)</span>), size) and latent state
+assignments ((z)). We use the Zero-Inflated Negative Binomial (ZINB)
+distribution to model sparse Hi-C data.</p>
+</div>
+<div id="set-mcmc-parameters" class="section level1">
+<h1>Set MCMC parameters</h1>
+<p>gamma_prior &lt;- 0.3</p>
+<p>iterations &lt;- 100 # Reduced for vignette; use 1000+ in
+practice</p>
+<p>theta_start &lt;- 0.5</p>
+<p>size_start &lt;- c(1, 1, 1)</p>
+<p>dist &lt;- “ZINB”</p>
+</div>
+<div id="run-mcmc" class="section level1">
+<h1>Run MCMC</h1>
+<p>results &lt;- run_chain_betas( N = N, gamma_prior = gamma_prior,
+iterations = iterations, x_vars = x_vars, y = list(y), # List of
+matrices theta_start = theta_start, size_start = size_start,
+use_data_priors = TRUE, user_fixed_priors = NULL, epsilon = NULL,
+distance_metric = “manhattan”, dist = dist, mc_cores = 1 )</p>
+</div>
+<div id="extract-results" class="section level1">
+<h1>Extract results</h1>
+<p>chains &lt;- results[[1]]$chains</p>
+<p>gamma &lt;- results[[1]]$gamma</p>
+<p>theta &lt;- results[[1]]$theta</p>
+<p>size &lt;- results[[1]]$size</p>
+<p>The output includes chains for regression parameters (chains), the
+Potts interaction parameter (gamma), zero-inflation parameter (theta),
+and dispersion parameters (size).</p>
+<p>Step 4: Computing Posterior Probabilities</p>
+<p>The compute_HMRFHiC_probabilities() function calculates posterior
+probabilities for each site belonging to one of three mixture
+components, using the MCMC chains.</p>
+</div>
+<div id="simulate-initial-z-matrix" class="section level1">
+<h1>Simulate initial z matrix</h1>
+<p>z &lt;- matrix(sample(1:3, N * N, replace = TRUE), nrow = N)</p>
+</div>
+<div id="compute-probabilities" class="section level1">
+<h1>Compute probabilities</h1>
+<p>probs &lt;- compute_HMRFHiC_probabilities( N = N, chain_betas =
+chains, chain_gamma = gamma, x_vars = x_vars, y = y, z = z, theta =
+theta, size_chain = size, dist = dist )</p>
+</div>
+<div id="view-probabilities-for-first-component" class="section level1">
+<h1>View probabilities for first component</h1>
+<p>probs$prob_component1</p>
+<p>This produces matrices of probabilities for each component, which can
+be used to assign interactions to biological states (e.g., active
+vs. inactive chromatin).</p>
+</div>
+<div id="visualizing-results" class="section level1">
+<h1>Visualizing Results</h1>
+<p>Let’s visualize the posterior probabilities for component 1:</p>
+<p>library(ggplot2)</p>
+<p>library(reshape2)</p>
+<p>prob_df &lt;- melt(probs$prob_component1, varnames = c(“Row”, “Col”),
+value.name = “Probability”)</p>
+<p>ggplot(prob_df, aes(x = Col, y = Row, fill = Probability)) +
+geom_tile() + scale_fill_gradient(low = “white”, high = “blue”) +
+theme_minimal() + ggtitle(“Posterior Probabilities for Component 1”)</p>
+<p>This heatmap shows the probability of each interaction belonging to
+the first mixture component.</p>
+</div>
+<div id="advanced-usage" class="section level1">
+<h1>Advanced Usage</h1>
+<p>Custom Priors</p>
+<p>To use user-specified priors instead of data-driven priors:</p>
+<p>user_priors &lt;- list( list(mean = c(0, 0, 0, 0, 0), sd = c(1, 1, 1,
+1, 1)), list(mean = c(0, 0, 0, 0, 0), sd = c(1, 1, 1, 1, 1)), list(mean
+= c(0, 0, 0, 0, 0), sd = c(1, 1, 1, 1, 1)) )</p>
+<p>results &lt;- run_chain_betas( N = N, gamma_prior = gamma_prior,
+iterations = iterations, x_vars = x_vars, y = list(y), theta_start =
+theta_start, size_start = size_start, use_data_priors = FALSE,
+user_fixed_priors = user_priors, epsilon = NULL, distance_metric =
+“manhattan”, dist = dist, mc_cores = 1 )</p>
+<p>Parallel Processing</p>
+<p>For multiple Hi-C matrices, use mc_cores to parallelize:</p>
+<p>y_list &lt;- list(y, y) # Example with two matrices</p>
+<p>results &lt;- run_chain_betas( N = N, gamma_prior = gamma_prior,
+iterations = iterations, x_vars = x_vars, y = y_list, theta_start =
+theta_start, size_start = size_start, use_data_priors = TRUE,
+user_fixed_priors = NULL, epsilon = NULL, distance_metric = “manhattan”,
+dist = dist, mc_cores = 2 )</p>
+<p>Other Distributions</p>
+<p>The package supports Poisson, NB, ZIP, and ZINB distributions. For
+example, to use Poisson:</p>
+<p>results &lt;- run_chain_betas( N = N, gamma_prior = gamma_prior,
+iterations = iterations, x_vars = x_vars, y = list(y), theta_start =
+NULL, size_start = NULL, use_data_priors = TRUE, user_fixed_priors =
+NULL, epsilon = NULL, distance_metric = “manhattan”, dist = “Poisson”,
+mc_cores = 1 )</p>
+</div>
+<div id="technical-notes" class="section level1">
+<h1>Technical Notes</h1>
+<p>Performance: Functions like pz_123(), run_metropolis_MCMC_betas(),
+and Neighbours_combined() are implemented in C++ using Rcpp and
+RcppArmadillo for efficiency, crucial for large Hi-C matrices.</p>
+<p>Utility Functions: Functions such as proposaldensity_combined(),
+likelihood_gamma(), gamma_prior_value(), posterior_combined(),
+prior_combined(), likelihood_combined(), proposalfunction(), and
+size_prior() support the MCMC process and are typically not called
+directly by users.</p>
+<p>Sparse Data: ZINB is recommended for Hi-C data due to its ability to
+model zero-inflation and overdispersion.</p>
+</div>
+<div id="conclusion" class="section level1">
+<h1>Conclusion</h1>
+<p>The HMRFHiC package offers a powerful tool for Bayesian analysis of
+Hi-C data, integrating spatial dependencies, covariate adjustments, and
+flexible mixture models. This vignette covered the core workflow, but
+the package’s functions can be customized for specific research needs,
+such as different genomic regions or distribution assumptions. For
+further details, consult the package documentation (?HMRFHiC) or contact
+the package maintainer. We hope HMRFHiC facilitates your genomic
+research!</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

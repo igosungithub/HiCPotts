@@ -1,0 +1,1 @@
+-e ".Rproj.user\n.Rhistory\n.RData\n*.Rcheck/\n*.tar.gz\n*.DS_Store" 

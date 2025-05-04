@@ -1,0 +1,71 @@
+* using log directory 'C:/Users/hitun/Downloads/package/HMRFHiC/..Rcheck'
+* using R Under development (unstable) (2025-04-29 r88182 ucrt)
+* using platform: x86_64-w64-mingw32
+* R was compiled by
+    gcc.exe (GCC) 14.2.0
+    GNU Fortran (GCC) 14.2.0
+* running under: Windows 11 x64 (build 26100)
+* using session charset: UTF-8
+* using option '--as-cran'
+* checking for file './DESCRIPTION' ... OK
+* checking extension type ... Package
+* this is package 'HMRFHiC' version '0.1.0'
+* package encoding: UTF-8
+* checking CRAN incoming feasibility ... [12s] WARNING
+Maintainer: 'Itunu Godwin Osuntoki <hitunes4@gmail.com>, Nicolae Radu Zabet<r.zabet@qmul.ac.uk>'
+
+The maintainer field is invalid or specifies more than one person
+
+New submission
+
+No Authors@R field in DESCRIPTION.
+Please add one, modifying
+  Authors@R: c(person(family = "c",
+                      role = "aut",
+                      comment = "\"aut\", \"cre\""),
+               person(given = c("comment", "="),
+                      family = "c)",
+                      role = "aut",
+                      comment = "ORCID = 0009-0005-1037-9346"),
+               person(family = "person)",
+                      role = "aut",
+                      comment = "given = \"Nicolae. Radu\", family = \"Zabet\", role = \"aut\""),
+               person(given = c("Itunu", "Godwin"),
+                      family = "Osuntoki",
+                      role = "cre",
+                      email = "hitunes4@gmail.com"),
+               person(given = c("Nicolae", "Radu"),
+                      family = "Zabet",
+                      role = "cre",
+                      email = "r.zabet@qmul.ac.uk"))
+as necessary.
+
+Author field should be Authors@R.  Current value is:
+  c(person(given = "Itunu. Godwin", family = "Osuntoki", role = c("aut", "cre"),
+             comment = c(ORCID = 0009-0005-1037-9346)),
+             person(given = "Nicolae. Radu", family = "Zabet", role = "aut"))
+
+Package has a VignetteBuilder field but no prebuilt vignette index.
+
+The Title field starts with the package name.
+
+This build time stamp is over a month old.
+* checking package namespace information ... OK
+* checking package dependencies ... ERROR
+Packages required but not available:
+  'Rcpp', 'RcppArmadillo', 'Biostrings', 'GenomicRanges',
+  'rtracklayer', 'strawr', 'rhdf5'
+
+Packages suggested but not available:
+  'rmarkdown', 'ggplot2', 'reshape2', 'testthat', 'BSgenome'
+
+Package in Depends/Imports which should probably only be in LinkingTo: 'RcppArmadillo'
+
+The suggested packages are required for a complete check.
+Checking can be attempted without them by setting the environment
+variable _R_CHECK_FORCE_SUGGESTS_ to a false value.
+
+See section 'The DESCRIPTION file' in the 'Writing R Extensions'
+manual.
+* DONE
+Status: 1 ERROR, 1 WARNING
