@@ -45,14 +45,15 @@
 #'   \code{theta_start} may be ignored.
 #'  
 #'
-#'  @param size_start A numeric vector of length 3 providing initial values for the size (overdispersion) parameter, 
+#' @param size_start A numeric vector of length 3 providing initial values for the size (overdispersion) parameter, 
 #'   required when \code{dist} is Negative Binomial (NB) or Zero-Inflated Negative Binomial (ZINB). 
 #'   Each of the three values corresponds to one mixture component.
 #'
-#'  @param use_data_priors data driven prior.
-#'  @param user_fixed_priors user-specified prior.
+#' @param use_data_priors data driven prior.
+#'
+#' @param user_fixed_priors user-specified prior.
 #' 
-#'  @param dist A character string specifying the distribution family to use for modeling interaction counts. 
+#' @param dist A character string specifying the distribution family to use for modeling interaction counts. 
 #'   Options include:
 #'   \itemize{
 #'     \item \code{"Poisson"}: Poisson distribution
