@@ -117,6 +117,7 @@ List get_indices(const NumericMatrix &z, int comp) {
 // #' # head(pz_vals)
 // #' }
 // #'
+// #' @keywords internal
 // #'
 // #' @export
 //
