@@ -113,6 +113,7 @@ NumericMatrix compute_neighbours(const NumericMatrix& data1, const NumericMatrix
 // #' neigh_proposed
 // #' }
 // #'
+// #' @keywords internal
 // #' @export
 //
 // [[Rcpp::export]]
