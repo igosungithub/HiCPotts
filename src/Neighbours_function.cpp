@@ -50,6 +50,7 @@ NumericMatrix compute_neighbours(const NumericMatrix& data1, const NumericMatrix
 }
 
 
+// #' @name Neighbours_combined
 // #' @title Neighbours Function for the Potts Model
 // #'
 // #' @description
