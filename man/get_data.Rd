@@ -2,70 +2,66 @@
 % Please edit documentation in R/prepare_data.R
 \name{get_data}
 \alias{get_data}
-\title{Extract Hi‑C Bin Interactions with GC, Accessibility, and TE Counts}
+\title{Extract Hi-C Bin Interactions with GC, Accessibility, and TE Counts}
 \usage{
-get_data(file_path, chr, start, end, resolution,
-                 genome_package, acc_wig = NULL,
-                 chain_file = NULL, te_granges = NULL)
+get_data(
+  file_path, chr, start, end, resolution,
+  genome_package, acc_wig = NULL,
+  chain_file = NULL, te_granges = NULL
+)
 }
 \arguments{
-\item{file_path}{Path to the Hi‑C file (\code{.hic}, \code{.cool}, or \code{.h5}).}
+\item{file_path}{Path to the Hi-C file (\code{.hic}, \code{.cool}, or \code{.h5}).}
 
 \item{chr}{Chromosome name (e.g. \code{"chr2L"}).}
 
-\item{start}{1‑based start coordinate of the region.}
+\item{start}{1-based start coordinate of the region.}
 
 \item{end}{End coordinate of the region.}
 
-\item{resolution}{Target bin size (bp).  If the native bins are smaller they will be merged;
-if larger they will be sliced.}
+\item{resolution}{Target bin size (bp); smaller native bins are merged, larger
+ones are sliced.}
 
-\item{genome_package}{Name of a BSgenome package (e.g. \code{"BSgenome.Dmelanogaster.UCSC.dm6"}) from which
-to extract DNA for GC calculations.}
+\item{genome_package}{Name of a BSgenome package (e.g.
+\code{"BSgenome.Dmelanogaster.UCSC.dm6"}) for GC calculations.}
 
-\item{acc_wig}{(Optional) Path to a DNase‑I wig (bedGraph) file.  If provided together
-with \code{chain_file}, accessibility scores will be lifted over,
-averaged per bin, and returned.}
+\item{acc_wig}{(Optional) Path to a DNase-I wig (bedGraph) file. Requires
+\code{chain_file} to lift over.}
 
-\item{chain_file}{(Optional) LiftOver chain file for mapping \code{acc_wig} coordinates.}
+\item{chain_file}{(Optional) LiftOver chain file for mapping \code{acc_wig}.}
 
-\item{te_granges}{(Optional) Either
-\itemize{
-  \item A path to a BED/GTF of TE annotations, which will be imported on‑the‑fly, or
-  \item A \code{GRanges} object of TE loci.
-}
-Only TEs on \code{chr} are counted for each bin.}
+\item{te_granges}{(Optional) Path to a BED/GTF of TE annotations or a
+\code{GRanges} object. Only TEs on \code{chr} are counted.}
 }
 \value{
-A \code{data.frame} with one row per bin‑pair on the diagonal grid covering 
-\code{[start,end]} at \code{resolution}, with columns:
+A \code{data.frame} with one row per bin-pair across \code{[start,end]} at
+\code{resolution}, containing:
 \describe{
-  \item{\code{start}}{Bin1 1‑based start.}
+  \item{\code{start}}{Bin1 start.}
   \item{\code{end.i.}}{Bin1 end.}
   \item{\code{start.j.}}{Bin2 start.}
   \item{\code{end}}{Bin2 end.}
   \item{\code{chrom}}{Chromosome name.}
   \item{\code{GC}}{Combined GC fraction of the two bins.}
-  \item{\code{ACC}}{Mean DNase‑I score per bin (or \code{NA} if none).}
-  \item{\code{TES}}{Sum of TE overlaps in both bins (or \code{NA}).}
+  \item{\code{ACC}}{Mean DNase-I score per bin or \code{NA}.}
+  \item{\code{TES}}{Sum of TE overlaps in both bins or \code{NA}.}
   \item{\code{interactions}}{Observed contact count (\code{0} if absent).}
 }
 }
 \description{
-Reads a Hi‑C contact matrix from a \code{.hic}, \code{.cool}, or \code{.h5} file,
+Reads a Hi-C contact matrix from a \code{.hic}, \code{.cool}, or \code{.h5} file,
 subsets to a specified genomic region, rebins to a desired resolution (merging or
-slicing as needed), and returns a complete grid of bin‑pair interactions.  For each
-bin‑pair it computes:
+slicing as needed), and returns a complete grid of bin-pair interactions. For each
+bin-pair it computes:
 \itemize{
   \item GC content from a BSgenome
-  \item DNase‑I accessibility (if provided, lifted over)
-  \item Transposable element (TE) overlap counts (if provided via BED/GTF or GRanges)
+  \item DNase-I accessibility (if provided, lifted over)
+  \item Transposable element (TE) overlap counts
   \item Interaction counts
 }
 }
 \examples{
 \dontrun{
-# 2kb bins over chr2L:1–40kb, with DHS and TE inputs
 bb <- get_data(
   file_path      = "C:/Users/name/Desktop/hicTransform.h5",
   chr            = "chr2L",
@@ -81,5 +77,5 @@ bb <- get_data(
 
 }
 \seealso{
-\code{\link{straw}}, \code{\link[rhdf5]{h5read}}, \code{\link{liftOver}}
+\code{\link[strawr]{straw}}, \code{\link[rhdf5]{h5read}}, \code{\link[rtracklayer]{liftOver}}
 }

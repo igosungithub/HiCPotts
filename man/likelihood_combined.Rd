@@ -4,7 +4,7 @@
 \alias{likelihood_combined}
 \title{Likelihood Function for a Specified Model Component and Distribution}
 \usage{
-likelihood_combined(params, z, x_vars, component, N, pred_combined, y, dist, theta = NULL, size = NULL)
+likelihood_combined(pred_combined, params, z, y, x_vars, component, theta, size, N, dist)
 }
 \arguments{
 \item{pred_combined}{A numeric vector of predictor values obtained from a prediction function. This 

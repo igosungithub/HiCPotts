@@ -67,7 +67,8 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Assuming 'my_data' is a data frame with the required columns (start, end, interactions, GC, TES, ACC) \cr
+#' # Assuming 'my_data' is a data frame with the required columns 
+#' #(start, end, interactions, GC, TES, ACC) \cr
 #' # and 'mcmc_results' is a list of MCMC chains returned by a model-fitting function:
 #'
 #' result <- compute_HMRFHiC_probabilities(

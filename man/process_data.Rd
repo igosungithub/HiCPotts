@@ -88,6 +88,6 @@ y_matrices <- processed$y
 
 }
 \seealso{
-\code{\link{run_chain_betas}}, \code{\link{run_metropolis_MCMC_betas}} for downstream MCMC inference 
+\code{\link{run_chain_betas}} for downstream MCMC inference 
 and modeling steps once data is processed into matrix form.
 }

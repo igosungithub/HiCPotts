@@ -5,18 +5,18 @@
 \title{MCMC Chain Execution for HMRFHiC Simulations}
 \usage{
 run_chain_betas(
-  N = N,
-  gamma_prior,
+  N,
+  gamma_prior=0.3,
   iterations,
   x_vars,
   y,
-  theta_start,
-  use_data_priors,
-  user_fixed_priors,
-  epsilon,
-  distance_metric,
-  dist,
-  size_start,
+  theta_start=NULL,
+  size_start=NULL,
+  use_data_priors=TRUE,
+  user_fixed_priors=NULL,
+  dist="ZIP",
+  epsilon=NULL,
+  distance_metric="manhattan",
   mc_cores = 1
 )
 }
@@ -39,25 +39,25 @@ should be an \eqn{N \times N} numeric matrix representing interaction counts bet
 These data are independently modeled, allowing the function to run separate MCMC chains for each dataset.}
 
 \item{theta_start}{A numeric value for the initial theta parameter (zero-inflation probability) for ZIP or ZINB distributions. 
-  This parameter controls the degree of zero-inflation in the model. If the chosen distribution does not involve zero-inflation, 
-  \code{theta_start} may be ignored.
- 
+This parameter controls the degree of zero-inflation in the model. If the chosen distribution does not involve zero-inflation, 
+\code{theta_start} may be ignored.}
 
- @param size_start A numeric vector of length 3 providing initial values for the size (overdispersion) parameter, 
-  required when \code{dist} is Negative Binomial (NB) or Zero-Inflated Negative Binomial (ZINB). 
-  Each of the three values corresponds to one mixture component.
+\item{size_start}{A numeric vector of length 3 providing initial values for the size (overdispersion) parameter, 
+required when \code{dist} is Negative Binomial (NB) or Zero-Inflated Negative Binomial (ZINB). 
+Each of the three values corresponds to one mixture component.}
 
- @param use_data_priors data driven prior.
- @param user_fixed_priors user-specified prior.
+\item{use_data_priors}{data driven prior.}
 
- @param dist A character string specifying the distribution family to use for modeling interaction counts. 
-  Options include:
-  \itemize{
-    \item \code{"Poisson"}: Poisson distribution
-    \item \code{"NB"}: Negative Binomial distribution
-    \item \code{"ZIP"}: Zero-Inflated Poisson distribution
-    \item \code{"ZINB"}: Zero-Inflated Negative Binomial distribution
-  }}
+\item{user_fixed_priors}{user-specified prior.}
+
+\item{dist}{A character string specifying the distribution family to use for modeling interaction counts. 
+Options include:
+\itemize{
+  \item \code{"Poisson"}: Poisson distribution
+  \item \code{"NB"}: Negative Binomial distribution
+  \item \code{"ZIP"}: Zero-Inflated Poisson distribution
+  \item \code{"ZINB"}: Zero-Inflated Negative Binomial distribution
+}}
 
 \item{epsilon}{(Optional) A numeric value for the ABC threshold \eqn{\epsilon}. If \code{NULL}, the threshold is 
 determined dynamically within the MCMC. This threshold is used to accept or reject proposed \eqn{\gamma} values 

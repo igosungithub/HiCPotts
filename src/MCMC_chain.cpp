@@ -29,11 +29,11 @@ double update_theta(const NumericMatrix &z_current, const NumericMatrix &y) {
 // #'
 // #' 
 // #' @usage
-// #' run_metropolis_MCMC_betas(N, gamma_prior, iterations, x_vars, y,
-// #'                           use_data_priors, user_fixed_priors = NULL,
+// #' run_metropolis_MCMC_betas(N, gamma_prior, iterations, x_vars, y, theta_start = NULL,
+// #'                           size_start = NULL, use_data_priors, user_fixed_priors = NULL,
 // #'                           dist = "ZIP", epsilon = NULL,
-// #'                           distance_metric = "manhattan",
-// #'                           size_start = NULL, theta_start = NULL)
+// #'                           distance_metric = "manhattan", mc_cores
+// #'                            )
 // #'
 // #' @param N Integer specifying the dimension of the lattice (\eqn{N \times N}).
 // #'
@@ -148,9 +148,6 @@ double update_theta(const NumericMatrix &z_current, const NumericMatrix &y) {
 // #'
 // #' @export
 //
-//
-//
-// #' @export
 // [[Rcpp::export]]
 List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
                                List x_vars, NumericMatrix y,
@@ -399,7 +396,7 @@ List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
     
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
-        double lambda = lambda_matrix(i, j); // Start with initial lambda from likelihood_gamma
+      //  double lambda = lambda_matrix(i, j); // Start with initial lambda from likelihood_gamma
          if (z_current(i, j) == 1) {
             // Example: Adjust lambda using all 5 beta parameters for each component
             lambda_matrix(i, j) += beta_current_1[0] +
@@ -462,7 +459,7 @@ List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
                 synthetic_data(i, j) = (u < theta[iter]) ? 0 : R::rpois(lambda);
             } else if (dist == "NB") {
                 //double lambda = lambda_matrix(i, j);
-                int component = z_current(i, j) - 1; // Assuming z_current values are 1, 2, or 3
+                //int component = z_current(i, j) - 1; // Assuming z_current values are 1, 2, or 3
       
                 double prob = size / (lambda_matrix(i, j) + size);
             if (prob <= 0 || prob >= 1 || std::isnan(prob)) {

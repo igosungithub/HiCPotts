@@ -117,11 +117,10 @@ List get_indices(const NumericMatrix &z, int comp) {
 // #' # head(pz_vals)
 // #' }
 // #'
-// #'
+// #' @keywords internal
 // #' @export
 //
 //
-// Updated pz_123 function with modified get_indices
 // [[Rcpp::export]]
 NumericMatrix pz_123(NumericMatrix z, NumericMatrix sum_neighbours, NumericMatrix y,
                      Function pred_combined, List chains, NumericVector chain_gamma,

@@ -6,7 +6,10 @@
 #' (such as genomic interactions in a Hi-C experiment) can be modeled by a combination of regression parameters and 
 #' potentially zero-inflation or overdispersion parameters.
 #'
-#' @usage likelihood_combined(params, z, x_vars, component, N, pred_combined, y, dist, theta = NULL, size = NULL)
+#' @usage likelihood_combined(pred_combined, params, z, y, x_vars, component, theta, size, N, dist)
+#'
+#' @param pred_combined A numeric vector of predictor values obtained from a prediction function. This 
+#'   typically represents the linear predictor \eqn{\lambda} for the given component.
 #'
 #' @param params A numeric vector of parameters associated with the model’s linear predictors. 
 #'   Typically includes intercepts and regression coefficients related to the covariates in \code{x_vars}.
@@ -22,9 +25,6 @@
 #'
 #' @param N An integer specifying the number of observations. This 
 #'   should match the length of the response variable \code{y} and the covariates in \code{x_vars}.
-#'
-#' @param pred_combined A numeric vector of predictor values obtained from a prediction function. This 
-#'   typically represents the linear predictor \eqn{\lambda} for the given component.
 #'
 #' @param y A numeric vector of observed interaction counts (the response variable). Each element 
 #'   corresponds to one observation (e.g., interaction count between a pair of genomic loci).

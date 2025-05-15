@@ -78,9 +78,12 @@
 #'
 #' # Using user-specified fixed priors for component 2
 #' user_fixed_priors <- list(
-#'   component1 = list(meany=5, meanx1=0, meanx2=0, meanx3=0, meanx4=0, sdy=1, sdx1=1, sdx2=1, sdx3=1, sdx4=1),\cr
-#'   component2 = list(meany=10, meanx1=1, meanx2=1, meanx3=1, meanx4=1, sdy=2, sdx1=2, sdx2=2, sdx3=2, sdx4=2),\cr
-#'   component3 = list(meany=2, meanx1=2, meanx2=2, meanx3=2, meanx4=2, sdy=1, sdx1=1, sdx2=1, sdx3=1, sdx4=1)
+#'   component1 = list(meany=5, meanx1=0, meanx2=0, meanx3=0, meanx4=0,
+#'   sdy=1, sdx1=1, sdx2=1, sdx3=1, sdx4=1),\cr
+#'   component2 = list(meany=10, meanx1=1, meanx2=1, meanx3=1, meanx4=1,
+#'   sdy=2, sdx1=2, sdx2=2, sdx3=2, sdx4=2),\cr
+#'   component3 = list(meany=2, meanx1=2, meanx2=2, meanx3=2, meanx4=2,
+#'   sdy=1, sdx1=1, sdx2=1, sdx3=1, sdx4=1)
 #' )
 #'
 #' prior_val_fixed <- prior_combined(

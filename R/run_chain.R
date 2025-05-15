@@ -8,18 +8,18 @@
 #'
 #' @usage
 #' run_chain_betas(
-#'   N = N,
-#'   gamma_prior,
+#'   N,
+#'   gamma_prior=0.3,
 #'   iterations,
 #'   x_vars,
 #'   y,
-#'   theta_start,
-#'   use_data_priors,
-#'   user_fixed_priors,
-#'   epsilon,
-#'   distance_metric,
-#'   dist,
-#'   size_start,
+#'   theta_start=NULL,
+#'   size_start=NULL,
+#'   use_data_priors=TRUE,
+#'   user_fixed_priors=NULL,
+#'   dist="ZIP",
+#'   epsilon=NULL,
+#'   distance_metric="manhattan",
 #'   mc_cores = 1
 #' )
 #'
@@ -45,14 +45,15 @@
 #'   \code{theta_start} may be ignored.
 #'  
 #'
-#'  @param size_start A numeric vector of length 3 providing initial values for the size (overdispersion) parameter, 
+#' @param size_start A numeric vector of length 3 providing initial values for the size (overdispersion) parameter, 
 #'   required when \code{dist} is Negative Binomial (NB) or Zero-Inflated Negative Binomial (ZINB). 
 #'   Each of the three values corresponds to one mixture component.
 #'
-#'  @param use_data_priors data driven prior.
-#'  @param user_fixed_priors user-specified prior.
+#' @param use_data_priors data driven prior.
+#'  
+#' @param user_fixed_priors user-specified prior.
 #' 
-#'  @param dist A character string specifying the distribution family to use for modeling interaction counts. 
+#' @param dist A character string specifying the distribution family to use for modeling interaction counts. 
 #'   Options include:
 #'   \itemize{
 #'     \item \code{"Poisson"}: Poisson distribution
@@ -160,7 +161,7 @@ run_chain_betas <- function(N,
                             distance_metric  = "manhattan",
                             mc_cores         = 1) {
   # y must be a list of matrices
-  if (!is.list(y)) stop("'y' must be a list of N×N matrices.")
+  if (!is.list(y)) stop("'y' must be a list of N by N matrices.")
   
   # dispatch each element of y to its own chain
   results <- parallel::mclapply(seq_along(y), function(i) {
