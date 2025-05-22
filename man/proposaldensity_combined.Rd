@@ -43,11 +43,13 @@ distributions. By returning a log-probability, it simplifies calculations involv
 and related MCMC procedures.
 }
 \examples{
+#\donttest{
 # Example usage:
 # Suppose we have a parameter vector and want to compute its proposal density under component 2:
-params <- c(310, 3, 5, 6, 1.5)  # parameter vector
+params <- c(0, 3, 5, 6, 1)  # parameter vector
 component <- 2
 log_proposal <- proposaldensity_combined(params, component)
-log_proposal
+print(log_proposal)
+#}
 
 }

@@ -68,19 +68,39 @@
 #' }
 #'
 #' @examples
-#' \dontrun{
-#' # Suppose we have a data frame 'df' with columns: start, end, interactions, GC, ACC, TES
-#' # and we know that df corresponds to a 10x10 interaction matrix (N=10).
-#'
-#' # Process the data, scaling interaction counts to [1, 500]
-#' processed <- process_data(df, N=10, scale_max=500, standardization_y=TRUE)
-#'
-#' # Extract covariates and interaction matrices
+#' set.seed(123)
+#' df <- data.frame(
+#'   start = rep(1:10, each = 10),
+#'   end = rep(11:20, times = 10),
+#'   interactions = rpois(100, 5),
+#'   GC = runif(100, 0, 1),
+#'   TES = runif(100, 0, 1),
+#'   ACC = runif(100, 0, 1)
+#' )
+#' processed <- process_data(df, N = 10, scale_max = 500, standardization_y = TRUE)
 #' x_vars <- processed$x_vars
 #' y_matrices <- processed$y
-#'
-#' # Each element in x_vars and y_matrices is now a list of one or more 10x10 matrices.
-#' }
+#' str(x_vars) # Show structure of covariates
+#' str(y_matrices) # Show structure of interaction matrices
+#' 
+#' #\donttest{
+#' # Extended example with larger dataset
+#' # Suppose we have a data frame 'large_df' corresponding to a 20x20 interaction matrix
+#' large_df <- data.frame(
+#'   start = rep(1:20, each = 20),
+#'   end = rep(21:40, times = 20),
+#'   interactions = rpois(400, 5),
+#'   GC = runif(400, 0, 1),
+#'   TES = runif(400, 0, 1),
+#'   ACC = runif(400, 0, 1)
+#' )
+#' processed <- process_data(large_df, N = 20, scale_max = 500, standardization_y = TRUE)
+#' x_vars <- processed[[1]]
+#' y_matrices <- processed[[2]]
+#' str(x_vars)
+#' str(y_matrices)
+#' # See vignette("HMRFHiC_vignette") for detailed examples with real Hi-C data.
+#' #}
 #'
 #' @seealso
 #' \code{\link{run_chain_betas}} for downstream MCMC inference 
@@ -129,7 +149,7 @@ process_data <- function(data, N, scale_max=500, standardization_y = TRUE) {
   
   expand <- function(ss, N) {
     lapply(ss, function(x) {
-      length_diff = max(N^2 - length(x), 0)
+      length_diff <- max(N^2 - length(x), 0)
       matrix(c(x, rep(0, length_diff)), N, N)
     })
   }
@@ -149,7 +169,7 @@ process_data <- function(data, N, scale_max=500, standardization_y = TRUE) {
     TES = acc,
     ACC = add
   )
-  y_sim1 <- y1
+  y_sim1 = y1
   
   # Check for NAs in the output
   if (anyNA(x_vars)) {

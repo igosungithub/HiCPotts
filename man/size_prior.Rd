@@ -34,12 +34,14 @@ allowing the model to accommodate different dispersion characteristics across mi
 The returned value is the log-density of the Gamma prior at the given \code{size_value}.
 }
 \examples{
+#\donttest{
 # Example: Compute the size prior for size_value = 2.5 in component 1
 log_prior_comp1 <- size_prior(size_value = 2.5, component = 1)
 log_prior_comp1
 
 # Example: Compute the size prior for size_value = 10 in component 3
 log_prior_comp3 <- size_prior(size_value = 10, component = 3)
-log_prior_comp3
+print(log_prior_comp3)
+#}
 
 }

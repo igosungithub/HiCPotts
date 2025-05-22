@@ -52,8 +52,8 @@
 #' This value can be integrated into a Bayesian inference framework to update parameter estimates based on the chosen priors.
 #'
 #' @examples
-#' \dontrun{
-#' # Example setup:
+#' #\donttest{
+#' # Example:
 #' N <- 100
 #' y <- rpois(N, lambda = 5)
 #' x_vars <- list(
@@ -96,69 +96,69 @@
 #'   user_fixed_priors = user_fixed_priors
 #' )
 #'
-#' }
+#' #}
 #'
 #' @export
 #' 
 #prior for the sources of biases
 prior_combined <- function(params, component, y, x_vars, z, use_data_priors = TRUE, user_fixed_priors) {
   # Extract parameters from the 'params' vector
-  a = params[1]
-  b = params[2]
-  c = params[3]
-  d = params[4]
-  e = params[5]
+  a <- params[1]
+  b <- params[2]
+  c <- params[3]
+  d <- params[4]
+  e <- params[5]
 
   # Set a small positive value to avoid using zero or negative standard deviations
-  epsilon = 1e-6
+  epsilon <- 1e-6
 
   # Subset data based on component if using data-driven priors
   if (use_data_priors) {
-    logical_mask = z == component
-    x1 = x_vars[[1]][[1]][logical_mask]
-    x2 = x_vars[[2]][[1]][logical_mask]
-    x3 = x_vars[[3]][[1]][logical_mask]
-    x4 = x_vars[[4]][[1]][logical_mask]
-    yc = y[logical_mask]
+    logical_mask <- z == component
+    x1 <- x_vars[[1]][[1]][logical_mask]
+    x2 <- x_vars[[2]][[1]][logical_mask]
+    x3 <- x_vars[[3]][[1]][logical_mask]
+    x4 <- x_vars[[4]][[1]][logical_mask]
+    yc <- y[logical_mask]
 
     # Data-driven priors: Calculate means and standard deviations from the data
     # Different settings for meany based on the component
     if (component == 1) {
-      inversesdy = rgamma(1,10,1000)
-      sdy = 1 / inversesdy
-      meany = rnorm(1, 5, sdy/10)  # Use mean of 2 for component 1
+      inversesdy <- rgamma(1,10,1000)
+      sdy <- 1 / inversesdy
+      meany <- rnorm(1, 5, sdy/10)  # Use mean of 2 for component 1
 
     } else if (component == 2) {
-      inversesdy = rgamma(1,500,2000000)
-      sdy = 1 / inversesdy
-      meany = rnorm(1, 700, sdy/10)  # Use mean of 1 for other components
+      inversesdy <- rgamma(1,500,2000000)
+      sdy <- 1 / inversesdy
+      meany <- rnorm(1, 700, sdy/10)  # Use mean of 1 for other components
 
     } else{
-      inversesdy = rgamma(1,10,10000)
-      sdy = 1 / inversesdy
-      meany = rnorm(1, 10, sdy/10)
+      inversesdy <- rgamma(1,10,10000)
+      sdy <- 1 / inversesdy
+      meany <- rnorm(1, 10, sdy/10)
 
     }
 
-    inversesdx1 = rgamma(1, (length(x1)-1)/2, sum((x1 - mean(x1))^2)/2)
-    sdx1 = 1 / inversesdx1
+    inversesdx1 <- rgamma(1, (length(x1)-1)/2, sum((x1 - mean(x1))^2)/2)
+    sdx1 <- 1 / inversesdx1
 
-    meanx1 = rnorm(1, mean(x1), sdx1)
+    meanx1 <- rnorm(1, mean(x1), sdx1)
 
-    inversesdx2 = rgamma(1, (length(x2)-1)/2, sum((x2 - mean(x2))^2)/2)
-    sdx2 = 1 / inversesdx2
+    inversesdx2 <- rgamma(1, (length(x2)-1)/2, sum((x2 - mean(x2))^2)/2)
+    sdx2 <- 1 / inversesdx2
 
-    meanx2 = rnorm(1, mean(x2), sdx2)
+    meanx2 <- rnorm(1, mean(x2), sdx2)
 
-    inversesdx3 = rgamma(1, (length(x3)-1)/2, sum((x3 - mean(x3))^2)/2)
-    sdx3 = 1 / inversesdx3
+    inversesdx3 <- rgamma(1, (length(x3)-1)/2, sum((x3 - mean(x3))^2)/2)
+    sdx3 <- 1 / inversesdx3
 
-    meanx3 = rnorm(1, mean(x3), sdx3)
+    meanx3 <- rnorm(1, mean(x3), sdx3)
 
-    inversesdx4 = rgamma(1, (length(x4)-1)/2, sum((x4 - mean(x4))^2)/2)
-    sdx4 = 1 / inversesdx4
+    inversesdx4 <- rgamma(1, (length(x4)-1)/2, sum((x4 - mean(x4))^2)/2)
+    sdx4 <- 1 / inversesdx4
 
-    meanx4 = rnorm(1, mean(x4), sdx4)
+    meanx4 <- rnorm(1, mean(x4), sdx4)
   } else {
     # Fixed priors: Use user-provided fixed priors for the component
     if (component == 1) {
@@ -185,11 +185,11 @@ prior_combined <- function(params, component, y, x_vars, z, use_data_priors = TR
   }
 
   # Calculate the log priors for each parameter based on the means and standard deviations
-  a_prior = dnorm(a, meany, sdy, log = TRUE)
-  b_prior = dnorm(b, meanx1, sdx1, log = TRUE)
-  c_prior = dnorm(c, meanx2, sdx2, log = TRUE)
-  d_prior = dnorm(d, meanx3, sdx3, log = TRUE)
-  e_prior = dnorm(e, meanx4, sdx4, log = TRUE)
+  a_prior <- dnorm(a, meany, sdy, log = TRUE)
+  b_prior <- dnorm(b, meanx1, sdx1, log = TRUE)
+  c_prior <- dnorm(c, meanx2, sdx2, log = TRUE)
+  d_prior <- dnorm(d, meanx3, sdx3, log = TRUE)
+  e_prior <- dnorm(e, meanx4, sdx4, log = TRUE)
 
   # Return the sum of log priors for all parameters
   return(a_prior + b_prior + c_prior + d_prior + e_prior)

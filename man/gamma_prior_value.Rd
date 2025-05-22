@@ -22,8 +22,10 @@ more mass towards the higher end of the \[0, 1\] interval (since Beta(10, 5) is 
 a prior belief that the interaction parameter is likely to encourage some degree of spatial clustering.
 }
 \examples{
+#\donttest{
 # Generate a single prior value for the Potts model interaction parameter
 prior_val <- gamma_prior_value()
 prior_val
+#}
 
 }

@@ -67,18 +67,24 @@
 #' It returns a numeric vector of likelihood contributions for each observation.
 #'
 #' @examples
-#' \dontrun{
+#' #\donttest{
 #' # Example setup
-#' N <- 100
-#' y <- rpois(N, lambda = 5)  # synthetic response data
-#' x_vars <- list(dist = runif(N, 0, 1))
-#' params <- c(intercept = 1.5, beta = 0.3)
-#' z <- matrix(1, nrow = N, ncol = 3)  # placeholder latent structure
-#' pred_combined <- exp(params["intercept"] + params["beta"] * x_vars$dist)
-#'
+#' z <- matrix(c(1, 1, 2, 3, 1, 2, 3, 1, 2), nrow = 3, byrow = TRUE)
+#' y <- matrix(c(0, 3, 5, 1, 0, 4, 6, 2, 0), nrow = 3, byrow = TRUE)
+#' params <- c(0.1, 0.2, 0.3, 0.4, 0.5)
+#' x_vars <- x_vars <- list(
+#'   list(matrix(runif(9, 1, 10), nrow = N)),  # first covariate
+#'   list(matrix(runif(9, 1, 10), nrow = N)),  # second covariate
+#'   list(matrix(runif(9, 1, 10), nrow = N)),  # third covariate
+#'   list(matrix(runif(9, 1, 10), nrow = N))   # fourth covariate
+#'  )
+#' N <- 3
+#' theta <- 0.2
+#' size <- 10
+#' preds_comp1 <- pred_combined(params, z, x_vars, component = 1, N = N)
 #' # Compute likelihood under a Poisson model, component 1
 #' ll_values <- likelihood_combined(
-#' pred_combined = pred_combined,
+#' pred_combined = preds_comp1,
 #'   params = params,
 #'   z = z,
 #'   y = y,
@@ -90,8 +96,8 @@
 #'   dist = "Poisson"
 #' )
 #'
-#' sum(ll_values) # sum of likelihood contributions
-#' }
+#' print(sum(ll_values)) # sum of likelihood contributions
+#' #}
 #'
 #' @seealso
 #' \code{\link{dpois}}, \code{\link{dnbinom}} for related probability mass functions.
@@ -104,20 +110,20 @@
 #'
 likelihood_combined <- function(pred_combined, params, z, y, x_vars, component, theta, size, N, dist) {
   # Subset the data based on the component
-  yc = y[z == component]
-  lambda=pred_combined(params, z, x_vars, component, N)
+  yc <- y[z == component]
+  lambda<-pred_combined(params, z, x_vars, component, N)
   # Calculate the likelihood based on the specified distribution
   if (component == 1) {
     if (dist == "ZIP") {
-      singlelikelihoods = ifelse(yc == 0,
+      singlelikelihoods <- ifelse(yc == 0,
                                  log(theta + (1 - theta) * exp(-lambda)),
                                  log(1 - theta) + dpois(yc, lambda = exp(lambda), log = TRUE))
     } else if (dist == "Poisson") {
-      singlelikelihoods = dpois(yc, lambda = exp(lambda), log = TRUE)
+      singlelikelihoods <- dpois(yc, lambda = exp(lambda), log = TRUE)
     } else if (dist == "NB") {
-      singlelikelihoods = dnbinom(yc, size = size, mu = exp(lambda), log = TRUE)
+      singlelikelihoods <- dnbinom(yc, size = size, mu = exp(lambda), log = TRUE)
     } else if (dist == "ZINB") {
-      singlelikelihoods = ifelse(yc == 0,
+      singlelikelihoods <- ifelse(yc == 0,
                                  log(theta + (1 - theta) * exp(-lambda)),
                                  log(1 - theta) + dnbinom(yc, size = size, mu = exp(lambda), log = TRUE))
     } else {
@@ -126,13 +132,13 @@ likelihood_combined <- function(pred_combined, params, z, y, x_vars, component, 
   } else if(component==2 || component==3) {
     # For components other than 1, restrict to Poisson and NB distributions
     if (dist == "Poisson" || dist == "ZIP") {
-      singlelikelihoods = dpois(yc[component], lambda = exp(lambda)[component], log = TRUE)
+      singlelikelihoods <- dpois(yc[component], lambda = exp(lambda)[component], log = TRUE)
     } else if (dist == "NB" || dist == "ZINB") {
-      singlelikelihoods = dnbinom(yc[component], size = size, mu = exp(lambda)[component], log = TRUE)
+      singlelikelihoods <- dnbinom(yc[component], size = size, mu = exp(lambda)[component], log = TRUE)
     } else {
       stop("Invalid distribution specified for component > 1.")
     }
   }
-  sumll = sum(singlelikelihoods)
+  sumll <- sum(singlelikelihoods)
   return(sumll)
 }

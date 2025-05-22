@@ -66,22 +66,58 @@
 #' The returned data frame thus provides a probabilistic classification of each observed interaction into one of the three modeled components.
 #'
 #' @examples
-#' \dontrun{
-#' # Assuming 'my_data' is a data frame with the required columns 
-#' #(start, end, interactions, GC, TES, ACC) \cr
-#' # and 'mcmc_results' is a list of MCMC chains returned by a model-fitting function:
-#'
+#' #\donttest{
+#' # Synthetic data
+#' set.seed(123)
+#' my_data <- data.frame(
+#'   start = 1:5,
+#'   end = 6:10,
+#'   interactions = c(3, 5, 2, 4, 1),
+#'   GC = runif(5, 0, 1),
+#'   TES = runif(5, 0, 1),
+#'   ACC = runif(5, 0, 1)
+#' )
+#' mcmc_results <- list(list(chains = list(matrix(c(1, 0.5, 0.2, 0.3, 0.4), ncol=5))))
 #' result <- compute_HMRFHiC_probabilities(
 #'   data = my_data,
 #'   chain_betas = mcmc_results,
-#'   iterations = 10000,
+#'   iterations = 10,
+#'   dist = "Poisson"
+#' )
+#' print(result)
+#' 
+#' 
+#' large_data <- data.frame(
+#'   start = c(1, 10, 20),
+#'   end = c(5, 15, 30),
+#'   interactions = c(10, 20, 30),
+#'   GC = c(0.5, 0.8, 0.3),
+#'   TES = c(0.2, 0.5, 0.7),
+#'   ACC = c(0.9, 0.4, 0.6)
+#' )
+#' 
+#' chain_betas <- list(
+#' list(
+#'   chains = list(
+#'     matrix(runif(25, 0.1, 1), ncol = 5),
+#'     matrix(runif(25, 0.1, 1), ncol = 5),
+#'     matrix(runif(25, 0.1, 1), ncol = 5)
+#'   ),
+#'   theta = runif(5, 0.1, 0.9),
+#'   size = matrix(runif(15, 1, 10), nrow = 3)
+#'   )
+#' )
+#' 
+#' result <- compute_HMRFHiC_probabilities(
+#'   data = large_data,
+#'   chain_betas = chain_betas,
+#'   iterations = 100,
 #'   dist = "ZINB"
 #' )
-#'
-#' head(result)
-#' # This will show the first few rows with added prob1, prob2, and prob3 columns.
-#' }
-#'
+#' print(result)
+#' # See vignette("HMRFHiC_vignette") for detailed examples with real Hi-C data.
+#' #}
+#' 
 #' @seealso
 #' \code{\link{dpois}}, \code{\link{dnbinom}}, for probability calculations.
 #'
@@ -92,7 +128,9 @@ compute_HMRFHiC_probabilities <- function(data, chain_betas, iterations, dist = 
   required_columns <- c("start", "end", "interactions", "GC", "TES", "ACC")
   missing_columns <- setdiff(required_columns, names(data))
   if (length(missing_columns) > 0) {
-    stop("The following required columns are missing from the data: ", paste(missing_columns, collapse = ", "))
+    #stop("The following required columns are missing from the data: ", paste(missing_columns, collapse = ", "))
+    stop("The following required columns are missing in the data: ",
+         paste(missing_columns, collapse = ", "))
   }
 
   # Prepare mydata data frame

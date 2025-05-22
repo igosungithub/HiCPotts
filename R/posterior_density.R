@@ -39,18 +39,20 @@
 #' A single numeric value representing the sum of the log proposal densities of all parameters for the specified component.
 #'
 #' @examples
+#' #\donttest{
 #' # Example usage:
 #' # Suppose we have a parameter vector and want to compute its proposal density under component 2:
-#' params <- c(310, 3, 5, 6, 1.5)  # parameter vector
+#' params <- c(0, 3, 5, 6, 1)  # parameter vector
 #' component <- 2
 #' log_proposal <- proposaldensity_combined(params, component)
-#' log_proposal
+#' print(log_proposal)
+#' #}
 #'
 #' @export
 #'
 proposaldensity_combined <- function(params, component) {
   # Define mean and standard deviation values for each component
-  densities = list(
+  densities <- list(
     component1 = list(means = c(5, 1, 2, 0, 1), sds = c(1000, 1000, 1000, 1000, 1000)),
     component2 = list(means = c(300, 2, 4, 5, 1), sds = c(5000, 7000, 1000, 9000, 1000)),
     component3 = list(means = c(700, 2, 8, 1, 2), sds = c(2000, 5000, 5000, 2000, 1000))
@@ -63,9 +65,9 @@ proposaldensity_combined <- function(params, component) {
   }
 
   # Select the appropriate mean and standard deviation values
-  selected_densities = densities[[component_key]]
-  means = selected_densities$means
-  sds = selected_densities$sds
+  selected_densities <- densities[[component_key]]
+  means <- selected_densities$means
+  sds <- selected_densities$sds
 
   # Ensure the length of params matches the length of means and sds
   if (length(params) != length(means) || length(params) != length(sds)) {
@@ -73,13 +75,13 @@ proposaldensity_combined <- function(params, component) {
   }
 
   # Ensure standard deviations are valid (not negative or zero)
-  epsilon = 1e-6  # Small positive value to ensure positivity
-  sds = pmax(sds, epsilon)
+  epsilon <- 1e-6  # Small positive value to ensure positivity
+  sds <- pmax(sds, epsilon)
 
   # Calculate the proposal density for each parameter
-  proposaldensity = mapply(dnorm, params, means, sds, MoreArgs = list(log = TRUE))
+  proposaldensity <- mapply(dnorm, params, means, sds, MoreArgs = list(log = TRUE))
 
   # Sum and return the log proposal densities
-  sum_proposaldensity = sum(proposaldensity)
+  sum_proposaldensity <- sum(proposaldensity)
   return(sum_proposaldensity)
 }

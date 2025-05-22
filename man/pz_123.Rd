@@ -75,7 +75,7 @@ The \code{params} list bundles all necessary parameters, which are passed to the
 using \eqn{\exp(\gamma \times \text{sum_neighbours})}, and returned as log-posteriors.
 }
 \examples{
-\dontrun{
+#\donttest{
 N <- 5
 z <- matrix(sample(1:3, N * N, replace = TRUE), N, N)
 x_vars <- list(cov1 = matrix(1, N, N), cov2 = matrix(2, N, N))
@@ -93,7 +93,7 @@ params <- list(
 )
 component <- 1
 pz_vals <- pz_123(params, z, x_vars, component)
-head(pz_vals)
-}
+print(pz_vals)
+#}
 
 }

@@ -46,6 +46,7 @@ This function:
 }
 }
 \examples{
+#\donttest{
 # Suppose we have an N=4 lattice and a vector x and pair_neighbours_DA_x1 of length 16
 N <- 4
 x <- rep(0.5, N*N)  # interaction parameter repeated for each pair
@@ -53,6 +54,7 @@ pair_neighbours_DA_x1 <- rnorm(N*N)  # random neighbor influences
 
 # Compute the Potts DA matrix
 potts_matrix <- likelihood_gamma(x, pair_neighbours_DA_x1, N)
-potts_matrix
+print(potts_matrix)
+#}
 
 }

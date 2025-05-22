@@ -55,10 +55,10 @@
 #' }
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' N <- 10
 #' gamma_prior <- 0.5
-#' iterations <- 1000
+#' iterations <- 100
 #' x_vars <- list(
 #'   distance = list(matrix(runif(N*N, 0, 10), nrow=N)),
 #'   GC = list(matrix(runif(N*N, 0, 1), nrow=N)),

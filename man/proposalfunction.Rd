@@ -23,8 +23,10 @@ distribution, which, similar to the prior example, draws the proposals towards t
 \[0,1\] interval.
 }
 \examples{
+#\donttest{
 # Generate a proposal value for the Potts model interaction parameter
 proposed_val <- proposalfunction()
 proposed_val
+#}
 
 }

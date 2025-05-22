@@ -75,33 +75,37 @@
 #' specified distribution and modeling assumptions.
 #'
 #' @examples
-#' \dontrun{
-#' # Example usage:
-#' N <- 100
+#' #\donttest{
+#' # Example usage of posterior:
+#' N <- 5
 #' y <- rpois(N, lambda = 5)
-#' x_vars <- list(dist = runif(N))
-#' params <- c(intercept = 0.5, beta = -0.1)
-#' z <- matrix(1, nrow = N, ncol = 3)
-#' pred_combined <- exp(params["intercept"] + params["beta"] * x_vars$dist)
+#' x_vars <- list(
+#'   list(matrix(runif(25), nrow = 5)),
+#'   list(matrix(runif(25), nrow = 5)),
+#'   list(matrix(runif(25), nrow = 5)),
+#'   list(matrix(runif(25), nrow = 5))
+#' )
+#' params <- c(1, 2, 3, 4, 5)
+#' z <- matrix(sample(1:3, N * 5, replace = TRUE), nrow = N, ncol = 5)
+#' preds_comp1 <- pred_combined(params, z, x_vars, component = 1, N = N)
 #'
 #' # Compute posterior for component 1 using a Poisson distribution
 #' post_val <- posterior_combined(
-#'   pred_combined = pred_combined,
+#'   pred_combined = preds_comp1,
 #'   params = params,
 #'   z = z,
 #'   y = y,
 #'   x_vars = x_vars,
-#'   component = 1,
+#'   component=1,
 #'   theta = NULL,
 #'   N = N,
-#'   use_data_priors = FALSE,
-#'   user_fixed_priors = FALSE,
+#'   use_data_priors = TRUE,
+#'   user_fixed_priors = NULL,
 #'   dist = "Poisson",
 #'   size = NULL
 #' )
-#'
-#' post_val
-#' }
+#' print(post_val) # Display result
+#' #}
 #'
 #' @export
 #' 
@@ -110,7 +114,8 @@ posterior_combined <- function(pred_combined, params, z, y, x_vars, component, t
   
   # Validate inputs
   if (length(z[z == component]) == 0) {
-    stop(paste("No data for component", component))
+    #stop(paste("No data for component", component))
+    stop(sprintf("Invalid component: %s", component))
   }
   
   # Compute the likelihood

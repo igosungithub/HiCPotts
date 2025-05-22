@@ -49,24 +49,25 @@ The resulting \eqn{\lambda} values serves as linear predictors (in a Poisson, NB
 and as inputs into the likelihood and posterior computation steps.
 }
 \examples{
-\dontrun{
+#\donttest{
 # Assume we have:
-# N = 100 observations
+# N = 3 observations
 # z indicates component membership for each observation
 # x_vars is a list of four covariates, each nested in a list: x_vars[[i]][[1]]
-N <- 100
-z <- sample(1:3, N, replace = TRUE)
+N <- 3
+params <- c(1, 2, 3, 4, 5)  # Example parameter values
+z <- matrix(c(1, 1, 2, 3, 1, 3, 2, 3, 1), nrow = 3)  # Example component matrix
 x_vars <- list(
-  list(runif(N, 0, 10)), # first covariate
-  list(runif(N, 0, 5)),  # second covariate
-  list(runif(N, 1, 20)), # third covariate
-  list(runif(N, 0, 2))   # fourth covariate
+  list(matrix(runif(9, 1, 10), nrow = N)),  # first covariate
+  list(matrix(runif(9, 1, 10), nrow = N)),  # second covariate
+  list(matrix(runif(9, 1, 10), nrow = N)),  # third covariate
+  list(matrix(runif(9, 1, 10), nrow = N))   # fourth covariate
 )
-params <- c(a = 0.5, b = 0.1, c = -0.05, d = 0.2, e = 0.3)
+
 
 # Get predicted values for component 1:
 preds_comp1 <- pred_combined(params, z, x_vars, component = 1, N = N)
-head(preds_comp1)
-}
+print(preds_comp1)
+#}
 
 }

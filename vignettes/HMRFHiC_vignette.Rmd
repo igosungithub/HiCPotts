@@ -27,23 +27,25 @@ Install them as follows:
 
 Install CRAN dependencies
 
+
+```{r setup-global, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE, echo = TRUE, collapse = TRUE)
 ```
+
+```{r install-cran, echo=TRUE, eval=FALSE}
 install.packages(c("Rcpp", "RcppArmadillo", "parallel"))
 ```
 
-Install Bioconductor dependencies
-
-```
+```{r install-bioc, echo=TRUE, eval=FALSE}
+#Install Bioconductor dependencies
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install(c("rhdf5", "strawr", "rtracklayer", "GenomicRanges", "BSgenome", "Biostrings"))
 ```
 
+```{r load-package, echo=TRUE, eval=TRUE}
 # Loading the package:
-
-```
-install.packages(HMRFHiC)
-
+#install.packages(HMRFHiC)
 library(HMRFHiC)
 ```
 
@@ -67,7 +69,7 @@ The `get_data()` function reads Hi-C contact matrices and annotates bins with co
 
 Simulate a 10x10 Hi-C dataset
 
-```
+```{r simulate-data, include=FALSE, eval=TRUE}
 set.seed(123)
 
 N <- 10
@@ -76,9 +78,9 @@ bins <- seq(1, 20000, by = 2000)
 
 data <- expand.grid(start = bins, start.j. = bins)
 
-data\$end.i. <- data$start + 1999
+data$end.i. <- data$start + 1999
 
-data\$end <- data$start.j. + 1999
+data$end <- data$start.j. + 1999
 
 data$chrom <- "chr2L"
 
@@ -86,19 +88,20 @@ data$GC <- runif(nrow(data), 0.3, 0.7)  #Simulated GC content
 
 data$ACC <- runif(nrow(data), 0, 1)     #Simulated accessibility
 
-data$TEs <- rpois(nrow(data), 2)        #Simulated TE counts
+data$TES <- rpois(nrow(data), 2)        #Simulated TE counts
 
 data$interactions <- rpois(nrow(data), lambda = 5)  #Simulated interaction counts
+data=as.data.frame(data)
 
 head(data)
 ```
 
 In practice, you would use get_data() to load real Hi-C data:
 
-```
+```{r get_data, include=FALSE, eval=FALSE}
 #Example (not run)
 
-data <- get_data(
+data <- prepare_data(
    file_path = "path/to/hic_file.h5",
    chr = "chr2L",
    start = 1,
@@ -115,12 +118,11 @@ data <- get_data(
 
 The `process_data()` function converts the data frame into a list of (N $\times$ N) matrices for interactions (`y`) and covariates (`x_vars`), optionally scaling interaction counts.
 
-```
+```{r process_data, include=FALSE, eval=TRUE}
 processed <- process_data(data, N = N, scale_max = 500, standardization_y = TRUE)
 
-x_vars <- processed$x_vars
-
-y <- processed$y[[1]]  # Single matrix for this example
+x_vars <- processed[["x_vars"]]  # Single matrix for this example
+y <- processed[["y"]]
 
 str(x_vars)  # Lists of distance, GC, TEs, ACC matrices
 ```
@@ -131,43 +133,47 @@ This produces matrices for distance, GC, TEs, ACC, and interaction counts, ready
 
 The `run_chain_betas()` function runs MCMC simulations to estimate parameters (($\beta$), ($\gamma$), ($\theta$ (for Zero-Inflated distributions)), size(for Negative binomial distributions)) and latent state assignments ((z)). In the example below, we use the Zero-Inflated Negative Binomial (ZINB) distribution to model the simulated sparse Hi-C data.
 
-```
+```{r setup_MCMC, include=FALSE, eval=TRUE}
 # Set MCMC parameters
 gamma_prior <- 0.3
 
-iterations <- 20000
+iterations <- 20
 
-theta_start <- 0.5
+theta_start <- c(0.5)
 
-size_start <- c(1, 1, 1)
+#size_start <- c(1, 1, 1)
 
-dist <- "ZINB"
+dist <- "ZIP"
+```
 
+```{r run_MCMC, include=FALSE, eval=TRUE}
 # Run MCMC
 results <- run_chain_betas(
   N = N,
   gamma_prior = gamma_prior,
   iterations = iterations,
   x_vars = x_vars,
-  y = list(y),  
+  y = y,  
   theta_start = theta_start,
-  size_start = size_start,
   use_data_priors = TRUE,
-  user_fixed_priors = NULL,
-  epsilon = NULL,
+  #user_fixed_priors = FALSE,
+  #epsilon = NULL,
   distance_metric = "manhattan",
   dist = dist,
+ # size_start = size_start,
   mc_cores = 1
 )
+```
 
+```{r MCMC_results, include=FALSE, eval=TRUE}
 # Extract results
-chains <- results[[1]]$chains
+chains <- results[["chains"]]
 
-gamma <- results[[1]]$gamma
+gamma <- results[["gamma"]]
 
-theta <- results[[1]]$theta
+theta <- results[["theta"]]
 
-size <- results[[1]]$size
+#size <- results[["size]]
 ```
 
 The output includes chains for regression parameters (`chains`), the Potts interaction parameter (`gamma`), zero-inflation parameter (`theta`), and dispersion parameters (`size`).
@@ -176,71 +182,44 @@ The output includes chains for regression parameters (`chains`), the Potts inter
 
 The `compute_HMRFHiC_probabilities()` function calculates posterior probabilities for each interaction belonging to one of three mixture components, using the MCMC chains.
 
-```
-# Simulate initial z matrix
-z <- matrix(sample(1:3, N * N, replace = TRUE), nrow = N)
-
+```{r compute_result, include=FALSE, eval=TRUE}
 # Compute probabilities
 probs <- compute_HMRFHiC_probabilities(
-  N = N,
+  data = data,
   chain_betas = chains,
-  chain_gamma = gamma,
-  x_vars = x_vars,
-  y = y,
-  z = z,
-  theta = theta,
-  size_chain = size,
-  dist = dist
+  iterations = iterations,
+  dist = "ZIP"
 )
 
-probs$prob_component1   #This produces matrices of probabilities for the first component, which translate to assigning interactions to biological states (e.g., active vs. inactive chromatin).
+probs$prob1   #This produces matrices of probabilities for the first component, which translate to assigning interactions to biological states (e.g., active vs. inactive chromatin).
 ```
-
-## Visualizing Results
-
-Let’s visualize the posterior probabilities for component 1:
-
-```
-library(ggplot2)
-
-library(reshape2)
-
-prob_df <- melt(probs$prob_component1, varnames = c("Row", "Col"), value.name = "Probability")
-
-ggplot(prob_df, aes(x = Col, y = Row, fill = Probability)) +
-  geom_tile() +
-  scale_fill_gradient(low = "white", high = "blue") +
-  theme_minimal() +
-  ggtitle("Posterior Probabilities for Component 1")
-```
-
-This heatmap shows the probability of each interaction belonging to the first mixture component.
 
 # Advanced Usage
 
 ## Custom Priors
 
 To use user-specified priors instead of data-driven priors:
-```
+```{r User_prior, include=FALSE, eval=TRUE}
 user_priors <- list(
   list(mean = c(0, 0, 0, 0, 0), sd = c(1, 1, 1, 1, 1)),
   list(mean = c(0, 0, 0, 0, 0), sd = c(1, 1, 1, 1, 1)),
   list(mean = c(0, 0, 0, 0, 0), sd = c(1, 1, 1, 1, 1))
 )
 
+# Run MCMC
 results <- run_chain_betas(
   N = N,
   gamma_prior = gamma_prior,
   iterations = iterations,
   x_vars = x_vars,
-  y = list(y),
+  y = y,  
   theta_start = theta_start,
-  size_start = size_start,
-  use_data_priors = FALSE,
+  #use_data_priors = TRUE,
   user_fixed_priors = user_priors,
-  epsilon = NULL,
+  #epsilon = NULL,
   distance_metric = "manhattan",
   dist = dist,
+ # size_start = size_start,
   mc_cores = 1
 )
 ```
@@ -249,7 +228,7 @@ results <- run_chain_betas(
 
 For multiple Hi-C matrices, use mc_cores to parallelize:
 
-```
+```{r multiple_matrices, include=FALSE, eval=FALSE}
 y_list <- list(y, y)  # Example with two matrices
 
 results <- run_chain_betas(
@@ -274,20 +253,21 @@ results <- run_chain_betas(
 The package supports Poisson, NB, ZIP, and ZINB distributions. 
 For example, to use Poisson:
 
-```
+```{r Additional_distributions, include=FALSE, eval=TRUE}
+# Run MCMC
 results <- run_chain_betas(
   N = N,
   gamma_prior = gamma_prior,
   iterations = iterations,
   x_vars = x_vars,
-  y = list(y),
-  theta_start = NULL,
-  size_start = NULL,
-  use_data_priors = TRUE,
-  user_fixed_priors = NULL,
-  epsilon = NULL,
+  y = y,  
+  theta_start = theta_start,
+  #use_data_priors = TRUE,
+  user_fixed_priors = user_priors,
+  #epsilon = NULL,
   distance_metric = "manhattan",
   dist = "Poisson",
+ # size_start = size_start,
   mc_cores = 1
 )
 ```

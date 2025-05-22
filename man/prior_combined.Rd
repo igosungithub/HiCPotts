@@ -56,8 +56,8 @@ This function supports two modes:
 In both modes, the priors are assumed to be normal distributions for each parameter. The function returns the sum of the log of these priors.
 }
 \examples{
-\dontrun{
-# Example setup:
+#\donttest{
+# Example:
 N <- 100
 y <- rpois(N, lambda = 5)
 x_vars <- list(
@@ -100,6 +100,6 @@ prior_val_fixed <- prior_combined(
   user_fixed_priors = user_fixed_priors
 )
 
-}
+#}
 
 }

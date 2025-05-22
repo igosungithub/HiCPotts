@@ -105,17 +105,17 @@ By passing a list of count matrices through \code{y}, users can run multiple ind
 facilitating simulation studies, sensitivity analyses, or other large-scale inference tasks.
 }
 \examples{
-\dontrun{
+#\donttest{
 # Suppose we have multiple simulated Hi-C data sets:
+N <- 10
 y <- list(
-  matrix(rpois(100, lambda = 5), nrow = 10),
-  matrix(rpois(100, lambda = 5), nrow = 10)
+  matrix(rpois(100, lambda = 5), nrow = N)
 )
 
-N <- 10
+
 gamma_prior <- 0.3
-iterations <- 500
-x_vars <- list(
+iterations <- 10
+x_vars1 <- list(
   distance = list(matrix(runif(N*N, 0, 1), nrow = N)),
   GC = list(matrix(runif(N*N, 0, 1), nrow = N)),
   TES = list(matrix(runif(N*N, 0, 1), nrow = N)),
@@ -140,9 +140,9 @@ results <- run_chain_betas(
   size_start = size_start,
   mc_cores = 1
 )
-
+print(results)
 # Each element of 'results' corresponds to the output of run_metropolis_MCMC_betas for each dataset
-}
+#}
 
 }
 \seealso{

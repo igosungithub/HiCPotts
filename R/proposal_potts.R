@@ -21,9 +21,11 @@
 #' for the interaction parameter in the Potts model.
 #'
 #' @examples
+#' #\donttest{
 #' # Generate a proposal value for the Potts model interaction parameter
 #' proposed_val <- proposalfunction()
 #' proposed_val
+#' #}
 #'
 #' @export
 #'
