@@ -1,44 +1,44 @@
 #' @title Compute the Posterior for the Model Components
 #'
 #' @description
-#' This function computes the combined posterior value for a specified component in the model utilizing 
-#' a variety of distributions (Poisson, Negative Binomial, Zero-Inflated Poisson, Zero-Inflated Negative Binomial). 
-#' It incorporates both the likelihood of the observed data under the given model parameters and the prior 
-#' distributions for those parameters. When applicable, it also includes a prior on the dispersion parameter 
+#' This function computes the combined posterior value for a specified component in the model utilizing
+#' a variety of distributions (Poisson, Negative Binomial, Zero-Inflated Poisson, Zero-Inflated Negative Binomial).
+#' It incorporates both the likelihood of the observed data under the given model parameters and the prior
+#' distributions for those parameters. When applicable, it also includes a prior on the dispersion parameter
 #' (size) used in Negative Binomial or Zero-Inflated Negative Binomial models.
 #'
 #' @usage
 #' posterior_combined(pred_combined, params, z, y, x_vars, component, theta, N,
 #'                    use_data_priors, user_fixed_priors, dist, size)
 #'
-#' @param pred_combined A numeric vector of predictor values generated from a prediction function. 
+#' @param pred_combined A numeric vector of predictor values generated from a prediction function.
 #'   Typically represents the linear predictors on a log scale.
 #'
-#' @param params A numeric vector of parameters for the model. This includes the regression coefficients. 
+#' @param params A numeric vector of parameters for the model. This includes the regression coefficients.
 #'
 #'
-#' @param z A matrix or data structure representing latent variables, components, or states in the model. 
+#' @param z A matrix or data structure representing latent variables, components, or states in the model.
 #'   For example, in the mixture model, \code{z} it indicates component membership of observations.
 #'
-#' @param y A numeric vector of observed counts or interaction values. Each element corresponds to an observation 
+#' @param y A numeric vector of observed counts or interaction values. Each element corresponds to an observation
 #'   (e.g., interaction counts between genomic loci).
 #'
-#' @param x_vars A list of covariates used in the model. Each element corresponds to a predictor variable, 
+#' @param x_vars A list of covariates used in the model. Each element corresponds to a predictor variable,
 #'   and all should be of length \code{N}, the number of observations.
 #'
-#' @param component An integer or factor indicating the component (e.g., mixture component) for which the 
+#' @param component An integer or factor indicating the component (e.g., mixture component) for which the
 #'   posterior is being computed. Different components might have different parameter sets or priors.
 #'
-#' @param theta (Optional) A numeric value representing the zero-inflation parameter for Zero-Inflated models. 
-#'   \eqn{\theta} governs the probability of extra zeros beyond what the Poisson or Negative Binomial 
+#' @param theta (Optional) A numeric value representing the zero-inflation parameter for Zero-Inflated models.
+#'   \eqn{\theta} governs the probability of extra zeros beyond what the Poisson or Negative Binomial
 #'   distribution would predict.
 #'
 #' @param N An integer specifying the number of observations. This should match the length of \code{y}.
 #'
-#' @param use_data_priors A logical value indicating whether to use data-driven priors for each component. 
+#' @param use_data_priors A logical value indicating whether to use data-driven priors for each component.
 #'   If \code{TRUE}, the prior distributions may be estimated from the data.
 #'
-#' @param user_fixed_priors A logical value indicating whether to use user-specified priors for each component. 
+#' @param user_fixed_priors A logical value indicating whether to use user-specified priors for each component.
 #'   If \code{TRUE}, a user-supplied prior distribution is applied instead of a data-driven one.
 #'
 #' @param dist A character string specifying the distribution family. One of:
@@ -49,7 +49,7 @@
 #'     \item \code{"ZINB"}: Zero-Inflated Negative Binomial distribution
 #'   }
 #'
-#' @param size (Optional) A numeric value for the dispersion parameter in the NB or ZINB distribution. 
+#' @param size (Optional) A numeric value for the dispersion parameter in the NB or ZINB distribution.
 #'   This parameter models overdispersion, allowing the variance to exceed the mean.
 #'
 #' @details
@@ -58,20 +58,20 @@
 #'
 #' Steps involved:
 #' \enumerate{
-#'   \item Compute the likelihood of the data (\code{y}) given the parameters, latent structure (\code{z}), 
-#'         covariates (\code{x_vars}), and chosen distribution (\code{dist}) using the provided \code{pred_combined} 
+#'   \item Compute the likelihood of the data (\code{y}) given the parameters, latent structure (\code{z}),
+#'         covariates (\code{x_vars}), and chosen distribution (\code{dist}) using the provided \code{pred_combined}
 #'         values. This is done via the \code{likelihood_combined} function.
-#'   \item Compute the prior distribution over the parameters (\code{params}). Depending on \code{use_data_priors} 
-#'         and \code{user_fixed_priors}, these priors might be estimated from data or supplied by the user. 
+#'   \item Compute the prior distribution over the parameters (\code{params}). Depending on \code{use_data_priors}
+#'         and \code{user_fixed_priors}, these priors might be estimated from data or supplied by the user.
 #'         This step uses the \code{prior_combined} function.
-#'   \item If the distribution is \code{"NB"} or \code{"ZINB"}, incorporate a separate prior on the dispersion 
+#'   \item If the distribution is \code{"NB"} or \code{"ZINB"}, incorporate a separate prior on the dispersion
 #'         parameter (\code{size}). This step uses the \code{size_prior} function.
 #' }
 #'
-#' By combining the likelihood and priors, the function returns the posterior value, which is used in 
+#' By combining the likelihood and priors, the function returns the posterior value, which is used in
 #' the Bayesian inference and MCMC steps to update parameters and perform parameters estimations.
 #'
-#' @return A numeric value representing the posterior log-probability for the given component under the 
+#' @return A numeric value representing the posterior log-probability for the given component under the
 #' specified distribution and modeling assumptions.
 #'
 #' @examples
@@ -96,7 +96,7 @@
 #'   z = z,
 #'   y = y,
 #'   x_vars = x_vars,
-#'   component=1,
+#'   component = 1,
 #'   theta = NULL,
 #'   N = N,
 #'   use_data_priors = TRUE,
@@ -108,36 +108,36 @@
 #' #}
 #'
 #' @export
-#' 
+#'
 posterior_combined <- function(pred_combined, params, z, y, x_vars, component, theta, N,
                                use_data_priors, user_fixed_priors, dist, size) {
-  
   # Validate inputs
   if (length(z[z == component]) == 0) {
-    #stop(paste("No data for component", component))
+    # stop(paste("No data for component", component))
     stop(sprintf("Invalid component: %s", component))
   }
-  
+
   # Compute the likelihood
   likelihood <- likelihood_combined(pred_combined, params, z, y, x_vars, component, theta, N,
-                                    dist = dist, size = size)
-  #print(paste("Likelihood for component", component, ":", likelihood))
-  
+    dist = dist, size = size
+  )
+  # print(paste("Likelihood for component", component, ":", likelihood))
+
   # Compute the prior for the parameters
   prior <- prior_combined(params, component, y, x_vars, z, use_data_priors, user_fixed_priors)
-  #print(paste("Prior for component", component, ":", prior))
-  
+  # print(paste("Prior for component", component, ":", prior))
+
   # If dist is "NB" or "ZINB", add the size prior
   if (dist == "NB" || dist == "ZINB") {
     # Validate size and component
     if (is.null(size) || component < 1 || component > 3) {
       stop("Invalid size or component for NB/ZINB distribution")
     }
-    
+
     # Calculate the size prior
     size_prior_value <- size_prior(size, component)
-    #print(paste("Size Prior for component", component, ":", size_prior_value))
-    
+    # print(paste("Size Prior for component", component, ":", size_prior_value))
+
     # Return the combined posterior
     return(likelihood + prior + size_prior_value)
   } else {

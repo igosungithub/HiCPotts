@@ -7,16 +7,16 @@ test_that("likelihood_combined calculates likelihood correctly for ZIP", {
   N <- 3
   theta <- 0.2
   size <- 10
-  
+
   # Mock pred_combined function
   pred_combined <- function(params, z, x_vars, component, N) {
     # Return a simple function of params for testing
     rep(sum(params) + component, sum(z == component))
   }
-  
+
   # Run the function
   likelihood <- likelihood_combined(pred_combined, params, z, y, x_vars, 1, theta, size, N, "ZIP")
-  
+
   # Check that likelihood is numeric
   expect_type(likelihood, "double")
 })
@@ -30,15 +30,15 @@ test_that("likelihood_combined handles Poisson distribution", {
   N <- 3
   theta <- 0.2
   size <- 10
-  
+
   # Mock pred_combined function
   pred_combined <- function(params, z, x_vars, component, N) {
     rep(sum(params) + component, sum(z == component))
   }
-  
+
   # Run the function
   likelihood <- likelihood_combined(pred_combined, params, z, y, x_vars, 1, theta, size, N, "Poisson")
-  
+
   # Check that likelihood is numeric
   expect_type(likelihood, "double")
 })
@@ -52,15 +52,17 @@ test_that("likelihood_combined handles invalid distribution", {
   N <- 3
   theta <- 0.2
   size <- 10
-  
+
   # Mock pred_combined function
   pred_combined <- function(params, z, x_vars, component, N) {
     rep(sum(params) + component, sum(z == component))
   }
-  
+
   # Expect an error for invalid distribution
-  expect_error(likelihood_combined(pred_combined, params, z, y, x_vars, 1, theta, size, N, "InvalidDist"),
-               "Invalid distribution specified")
+  expect_error(
+    likelihood_combined(pred_combined, params, z, y, x_vars, 1, theta, size, N, "InvalidDist"),
+    "Invalid distribution specified"
+  )
 })
 
 test_that("likelihood_combined calculates likelihood for component 2 and NB", {
@@ -72,15 +74,15 @@ test_that("likelihood_combined calculates likelihood for component 2 and NB", {
   N <- 3
   theta <- 0.2
   size <- 10
-  
+
   # Mock pred_combined function
   pred_combined <- function(params, z, x_vars, component, N) {
     rep(sum(params) + component, sum(z == component))
   }
-  
+
   # Run the function for component 2
   likelihood <- likelihood_combined(pred_combined, params, z, y, x_vars, 2, theta, size, N, "NB")
-  
+
   # Check that likelihood is numeric
   expect_type(likelihood, "double")
 })
@@ -94,15 +96,15 @@ test_that("likelihood_combined calculates likelihood for ZINB", {
   N <- 3
   theta <- 0.2
   size <- 10
-  
+
   # Mock pred_combined function
   pred_combined <- function(params, z, x_vars, component, N) {
     rep(sum(params) + component, sum(z == component))
   }
-  
+
   # Run the function for ZINB
   likelihood <- likelihood_combined(pred_combined, params, z, y, x_vars, 1, theta, size, N, "ZINB")
-  
+
   # Check that likelihood is numeric
   expect_type(likelihood, "double")
 })

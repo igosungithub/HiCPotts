@@ -89,12 +89,12 @@ N <- 10
 gamma_prior <- 0.5
 iterations <- 100
 x_vars <- list(
-  distance = list(matrix(runif(N*N, 0, 10), nrow=N)),
-  GC = list(matrix(runif(N*N, 0, 1), nrow=N)),
-  TES = list(matrix(runif(N*N, 0, 2), nrow=N)),
-  ACC = list(matrix(runif(N*N, 0, 5), nrow=N))
+  distance = list(matrix(runif(N * N, 0, 10), nrow = N)),
+  GC = list(matrix(runif(N * N, 0, 1), nrow = N)),
+  TES = list(matrix(runif(N * N, 0, 2), nrow = N)),
+  ACC = list(matrix(runif(N * N, 0, 5), nrow = N))
 )
-y <- matrix(rpois(N*N, lambda=5), nrow=N)
+y <- matrix(rpois(N * N, lambda = 5), nrow = N)
 results <- run_metropolis_MCMC_betas(
   N = N,
   gamma_prior = gamma_prior,
@@ -104,7 +104,7 @@ results <- run_metropolis_MCMC_betas(
   use_data_priors = TRUE,
   dist = "ZIP"
 )
-plot(results$gamma, type="l")
+plot(results$gamma, type = "l")
 }
 
 }

@@ -21,36 +21,36 @@ run_chain_betas(
 )
 }
 \arguments{
-\item{N}{An integer specifying the dimension of each interaction matrix (\eqn{N \times N}). 
+\item{N}{An integer specifying the dimension of each interaction matrix (\eqn{N \times N}).
 All interaction matrices in \code{y} must have this dimension.}
 
-\item{gamma_prior}{A numeric value specifying the initial (prior) value for the Potts model interaction parameter \eqn{\gamma}. 
+\item{gamma_prior}{A numeric value specifying the initial (prior) value for the Potts model interaction parameter \eqn{\gamma}.
 This parameter influences the spatial dependency structure in the model.}
 
-\item{iterations}{An integer indicating the number of MCMC iterations to run for each dataset. 
+\item{iterations}{An integer indicating the number of MCMC iterations to run for each dataset.
 During these iterations, parameters (betas, gamma, theta, size) and component (z) are updated repeatedly.}
 
-\item{x_vars}{A list of covariates (e.g., distance, GC, TES, ACC) used in the regression model for the Hi-C interactions. 
-Each element of \code{x_vars} is expected to be a list or matrix of appropriate dimensions matching the \eqn{N \times N} lattice. 
+\item{x_vars}{A list of covariates (e.g., distance, GC, TES, ACC) used in the regression model for the Hi-C interactions.
+Each element of \code{x_vars} is expected to be a list or matrix of appropriate dimensions matching the \eqn{N \times N} lattice.
 These covariates are used to adjust for various genomic biases in interaction frequencies.}
 
-\item{y}{A \code{list} of Hi-C interaction count matrices. Each element of the list 
-should be an \eqn{N \times N} numeric matrix representing interaction counts between genomic loci. 
+\item{y}{A \code{list} of Hi-C interaction count matrices. Each element of the list
+should be an \eqn{N \times N} numeric matrix representing interaction counts between genomic loci.
 These data are independently modeled, allowing the function to run separate MCMC chains for each dataset.}
 
-\item{theta_start}{A numeric value for the initial theta parameter (zero-inflation probability) for ZIP or ZINB distributions. 
-This parameter controls the degree of zero-inflation in the model. If the chosen distribution does not involve zero-inflation, 
+\item{theta_start}{A numeric value for the initial theta parameter (zero-inflation probability) for ZIP or ZINB distributions.
+This parameter controls the degree of zero-inflation in the model. If the chosen distribution does not involve zero-inflation,
 \code{theta_start} may be ignored.}
 
-\item{size_start}{A numeric vector of length 3 providing initial values for the size (overdispersion) parameter, 
-required when \code{dist} is Negative Binomial (NB) or Zero-Inflated Negative Binomial (ZINB). 
+\item{size_start}{A numeric vector of length 3 providing initial values for the size (overdispersion) parameter,
+required when \code{dist} is Negative Binomial (NB) or Zero-Inflated Negative Binomial (ZINB).
 Each of the three values corresponds to one mixture component.}
 
 \item{use_data_priors}{data driven prior.}
 
 \item{user_fixed_priors}{user-specified prior.}
 
-\item{dist}{A character string specifying the distribution family to use for modeling interaction counts. 
+\item{dist}{A character string specifying the distribution family to use for modeling interaction counts.
 Options include:
 \itemize{
   \item \code{"Poisson"}: Poisson distribution
@@ -59,24 +59,24 @@ Options include:
   \item \code{"ZINB"}: Zero-Inflated Negative Binomial distribution
 }}
 
-\item{epsilon}{(Optional) A numeric value for the ABC threshold \eqn{\epsilon}. If \code{NULL}, the threshold is 
-determined dynamically within the MCMC. This threshold is used to accept or reject proposed \eqn{\gamma} values 
+\item{epsilon}{(Optional) A numeric value for the ABC threshold \eqn{\epsilon}. If \code{NULL}, the threshold is
+determined dynamically within the MCMC. This threshold is used to accept or reject proposed \eqn{\gamma} values
 based on their ability to produce synthetic data that match observed data according to a given distance metric.}
 
-\item{distance_metric}{A character string specifying the distance measure used in the ABC step. 
+\item{distance_metric}{A character string specifying the distance measure used in the ABC step.
 Supported values include:
 \itemize{
   \item \code{"manhattan"}: Absolute differences between means
   \item \code{"euclidean"}: Squared differences between means
 }}
 
-\item{mc_cores}{An integer specifying the number of CPU cores to use for parallel processing. 
-If \code{mc_cores > 1}, the function runs MCMC chains for multiple datasets concurrently, 
-utilizing multi-core capabilities to reduce total runtime. 
+\item{mc_cores}{An integer specifying the number of CPU cores to use for parallel processing.
+If \code{mc_cores > 1}, the function runs MCMC chains for multiple datasets concurrently,
+utilizing multi-core capabilities to reduce total runtime.
 Defaults to 1 (no parallelization).}
 }
 \value{
-A list of length equal to the length of \code{y}. Each element of the returned list is itself a list 
+A list of length equal to the length of \code{y}. Each element of the returned list is itself a list
 (as returned by \code{run_metropolis_MCMC_betas}) containing:
 \itemize{
   \item \code{chains}: MCMC samples of the regression parameters for each mixture component.
@@ -86,12 +86,12 @@ A list of length equal to the length of \code{y}. Each element of the returned l
 }
 }
 \description{
-The run_metropolis_MCMC_betas function serves as a high-level wrapper to execute the MCMC sampling process on Hi-C interaction data. 
-It leverages the run_metropolis_MCMC_betas function to perform Bayesian inference, including updating model parameters (betas, gamma, size, and theta) 
+The run_metropolis_MCMC_betas function serves as a high-level wrapper to execute the MCMC sampling process on Hi-C interaction data.
+It leverages the run_metropolis_MCMC_betas function to perform Bayesian inference, including updating model parameters (betas, gamma, size, and theta)
 and mixture component assignments. It can also run in parallel. By running multiple simulations simultaneously, it streamlines and expedites large-scale analyses.
 }
 \details{
-The \code{run_chain_betas} function provides a convenient interface for running MCMC-based inference 
+The \code{run_chain_betas} function provides a convenient interface for running MCMC-based inference
 on multiple Hi-C datasets simultaneously. It calls \code{run_metropolis_MCMC_betas}
 which performs:
 \enumerate{
@@ -101,7 +101,7 @@ which performs:
   \item Updating the dispersion parameter (\eqn{\text{size}}) for NB or ZINB distributions.
 }
 
-By passing a list of count matrices through \code{y}, users can run multiple independent MCMC chains concurrently, 
+By passing a list of count matrices through \code{y}, users can run multiple independent MCMC chains concurrently,
 facilitating simulation studies, sensitivity analyses, or other large-scale inference tasks.
 }
 \examples{
@@ -115,14 +115,14 @@ y <- list(
 
 gamma_prior <- 0.3
 iterations <- 10
-x_vars1 <- list(
-  distance = list(matrix(runif(N*N, 0, 1), nrow = N)),
-  GC = list(matrix(runif(N*N, 0, 1), nrow = N)),
-  TES = list(matrix(runif(N*N, 0, 1), nrow = N)),
-  ACC = list(matrix(runif(N*N, 0, 1), nrow = N))
+x_vars <- list(
+  distance = list(matrix(runif(N * N, 0, 1), nrow = N)),
+  GC = list(matrix(runif(N * N, 0, 1), nrow = N)),
+  TES = list(matrix(runif(N * N, 0, 1), nrow = N)),
+  ACC = list(matrix(runif(N * N, 0, 1), nrow = N))
 )
 theta_start <- 0.5
-size_start <- c(1,1,1)
+size_start <- c(1, 1, 1)
 
 # Run the MCMC chains in parallel using 2 cores
 results <- run_chain_betas(

@@ -37,15 +37,16 @@ install.packages(c("Rcpp", "RcppArmadillo", "parallel"))
 ```
 
 ```{r install-bioc, echo=TRUE, eval=FALSE}
-#Install Bioconductor dependencies
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+# Install Bioconductor dependencies
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
 BiocManager::install(c("rhdf5", "strawr", "rtracklayer", "GenomicRanges", "BSgenome", "Biostrings"))
 ```
 
 ```{r load-package, echo=TRUE, eval=TRUE}
 # Loading the package:
-#install.packages(HMRFHiC)
+# install.packages(HMRFHiC)
 library(HMRFHiC)
 ```
 
@@ -84,14 +85,14 @@ data$end <- data$start.j. + 1999
 
 data$chrom <- "chr2L"
 
-data$GC <- runif(nrow(data), 0.3, 0.7)  #Simulated GC content
+data$GC <- runif(nrow(data), 0.3, 0.7) # Simulated GC content
 
-data$ACC <- runif(nrow(data), 0, 1)     #Simulated accessibility
+data$ACC <- runif(nrow(data), 0, 1) # Simulated accessibility
 
-data$TES <- rpois(nrow(data), 2)        #Simulated TE counts
+data$TES <- rpois(nrow(data), 2) # Simulated TE counts
 
-data$interactions <- rpois(nrow(data), lambda = 5)  #Simulated interaction counts
-data=as.data.frame(data)
+data$interactions <- rpois(nrow(data), lambda = 5) # Simulated interaction counts
+data <- as.data.frame(data)
 
 head(data)
 ```
@@ -99,18 +100,18 @@ head(data)
 In practice, you would use get_data() to load real Hi-C data:
 
 ```{r get_data, include=FALSE, eval=FALSE}
-#Example (not run)
+# Example (not run)
 
 data <- prepare_data(
-   file_path = "path/to/hic_file.h5",
-   chr = "chr2L",
-   start = 1,
-   end = 20000,
-   resolution = 2000,
-   genome_package = "BSgenome.Dmelanogaster.UCSC.dm6",
-   acc_wig = "path/to/dnase.wig",
-   chain_file = "path/to/chain.file",
-   te_granges = "path/to/te.gtf"
+  file_path = "path/to/hic_file.h5",
+  chr = "chr2L",
+  start = 1,
+  end = 20000,
+  resolution = 2000,
+  genome_package = "BSgenome.Dmelanogaster.UCSC.dm6",
+  acc_wig = "path/to/dnase.wig",
+  chain_file = "path/to/chain.file",
+  te_granges = "path/to/te.gtf"
 )
 ```
 
@@ -121,10 +122,10 @@ The `process_data()` function converts the data frame into a list of (N $\times$
 ```{r process_data, include=FALSE, eval=TRUE}
 processed <- process_data(data, N = N, scale_max = 500, standardization_y = TRUE)
 
-x_vars <- processed[["x_vars"]]  # Single matrix for this example
+x_vars <- processed[["x_vars"]] # Single matrix for this example
 y <- processed[["y"]]
 
-str(x_vars)  # Lists of distance, GC, TEs, ACC matrices
+str(x_vars) # Lists of distance, GC, TEs, ACC matrices
 ```
 
 This produces matrices for distance, GC, TEs, ACC, and interaction counts, ready for MCMC.
@@ -141,7 +142,7 @@ iterations <- 20
 
 theta_start <- c(0.5)
 
-#size_start <- c(1, 1, 1)
+# size_start <- c(1, 1, 1)
 
 dist <- "ZIP"
 ```
@@ -153,14 +154,14 @@ results <- run_chain_betas(
   gamma_prior = gamma_prior,
   iterations = iterations,
   x_vars = x_vars,
-  y = y,  
+  y = y,
   theta_start = theta_start,
   use_data_priors = TRUE,
-  #user_fixed_priors = FALSE,
-  #epsilon = NULL,
+  # user_fixed_priors = FALSE,
+  # epsilon = NULL,
   distance_metric = "manhattan",
   dist = dist,
- # size_start = size_start,
+  # size_start = size_start,
   mc_cores = 1
 )
 ```
@@ -173,7 +174,7 @@ gamma <- results[["gamma"]]
 
 theta <- results[["theta"]]
 
-#size <- results[["size]]
+# size <- results[["size]]
 ```
 
 The output includes chains for regression parameters (`chains`), the Potts interaction parameter (`gamma`), zero-inflation parameter (`theta`), and dispersion parameters (`size`).
@@ -191,7 +192,7 @@ probs <- compute_HMRFHiC_probabilities(
   dist = "ZIP"
 )
 
-probs$prob1   #This produces matrices of probabilities for the first component, which translate to assigning interactions to biological states (e.g., active vs. inactive chromatin).
+probs$prob1 # This produces matrices of probabilities for the first component, which translate to assigning interactions to biological states (e.g., active vs. inactive chromatin).
 ```
 
 # Advanced Usage
@@ -212,14 +213,14 @@ results <- run_chain_betas(
   gamma_prior = gamma_prior,
   iterations = iterations,
   x_vars = x_vars,
-  y = y,  
+  y = y,
   theta_start = theta_start,
-  #use_data_priors = TRUE,
+  # use_data_priors = TRUE,
   user_fixed_priors = user_priors,
-  #epsilon = NULL,
+  # epsilon = NULL,
   distance_metric = "manhattan",
   dist = dist,
- # size_start = size_start,
+  # size_start = size_start,
   mc_cores = 1
 )
 ```
@@ -229,7 +230,7 @@ results <- run_chain_betas(
 For multiple Hi-C matrices, use mc_cores to parallelize:
 
 ```{r multiple_matrices, include=FALSE, eval=FALSE}
-y_list <- list(y, y)  # Example with two matrices
+y_list <- list(y, y) # Example with two matrices
 
 results <- run_chain_betas(
   N = N,
@@ -260,14 +261,14 @@ results <- run_chain_betas(
   gamma_prior = gamma_prior,
   iterations = iterations,
   x_vars = x_vars,
-  y = y,  
+  y = y,
   theta_start = theta_start,
-  #use_data_priors = TRUE,
+  # use_data_priors = TRUE,
   user_fixed_priors = user_priors,
-  #epsilon = NULL,
+  # epsilon = NULL,
   distance_metric = "manhattan",
   dist = "Poisson",
- # size_start = size_start,
+  # size_start = size_start,
   mc_cores = 1
 )
 ```

@@ -47,13 +47,13 @@ A \code{data.frame} containing the original input columns plus three new columns
 The returned data frame thus provides a probabilistic classification of each observed interaction into one of the three modeled components.
 }
 \description{
-This function computes the posterior probabilities of assigning genomic interactions to each of three mixture components (or states) in a Hidden Markov Random Field (HMRF) model. 
-It uses the posterior means of regression parameters obtained from MCMC simulations and combines these with user-specified distributions (zero-inflated or standard) 
+This function computes the posterior probabilities of assigning genomic interactions to each of three mixture components (or states) in a Hidden Markov Random Field (HMRF) model.
+It uses the posterior means of regression parameters obtained from MCMC simulations and combines these with user-specified distributions (zero-inflated or standard)
 to produce probabilities for each observed interaction.
 }
 \details{
 This function is part of the HMRFHiC pipeline that models genomic interactions (e.g., Hi-C interaction counts) using a mixture model approach.
-The model typically considers three components (or latent states), each characterized by a distinct mean-structure and potentially different 
+The model typically considers three components (or latent states), each characterized by a distinct mean-structure and potentially different
 zero-inflation or overdispersion parameters, depending on the chosen distribution.
 
 The function:
@@ -64,31 +64,16 @@ The function:
   \item Normalizes these probabilities so that each interaction is assigned a set of three probabilities summing to 1.
 }
 
-For zero-inflated distributions (\code{"ZIP"}, \code{"ZINB"}), a \eqn{\theta} parameter captures the probability of an excess zero. 
-For negative binomial distributions (\code{"NB"}, \code{"ZINB"}), an overdispersion parameter is included. 
+For zero-inflated distributions (\code{"ZIP"}, \code{"ZINB"}), a \eqn{\theta} parameter captures the probability of an excess zero.
+For negative binomial distributions (\code{"NB"}, \code{"ZINB"}), an overdispersion parameter is included.
 
 The computed probabilities can be used for downstream analysis, such as segmenting interactions into classes or modeling spatial dependence in a hidden Markov field.
 }
 \examples{
+#
 #\donttest{
 # Synthetic data
 set.seed(123)
-my_data <- data.frame(
-  start = 1:5,
-  end = 6:10,
-  interactions = c(3, 5, 2, 4, 1),
-  GC = runif(5, 0, 1),
-  TES = runif(5, 0, 1),
-  ACC = runif(5, 0, 1)
-)
-mcmc_results <- list(list(chains = list(matrix(c(1, 0.5, 0.2, 0.3, 0.4), ncol=5))))
-result <- compute_HMRFHiC_probabilities(
-  data = my_data,
-  chain_betas = mcmc_results,
-  iterations = 10,
-  dist = "Poisson"
-)
-print(result)
 
 
 large_data <- data.frame(
@@ -101,25 +86,26 @@ large_data <- data.frame(
 )
 
 chain_betas <- list(
-list(
-  chains = list(
-    matrix(runif(25, 0.1, 1), ncol = 5),
-    matrix(runif(25, 0.1, 1), ncol = 5),
-    matrix(runif(25, 0.1, 1), ncol = 5)
-  ),
-  theta = runif(5, 0.1, 0.9),
-  size = matrix(runif(15, 1, 10), nrow = 3)
+  list(
+    chains = list(
+      matrix(runif(25, 0.1, 1), ncol = 5),
+      matrix(runif(25, 0.1, 1), ncol = 5),
+      matrix(runif(25, 0.1, 1), ncol = 5)
+    ),
+    theta = runif(5, 0.1, 0.9),
+    size = matrix(runif(15, 1, 10), nrow = 3)
   )
 )
 
 result <- compute_HMRFHiC_probabilities(
   data = large_data,
   chain_betas = chain_betas,
-  iterations = 100,
-  dist = "ZINB"
+  iterations = 5,
+  dist = "Poisson"
 )
 print(result)
 # See vignette("HMRFHiC_vignette") for detailed examples with real Hi-C data.
+#
 #}
 
 }

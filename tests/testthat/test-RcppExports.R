@@ -15,9 +15,9 @@ test_that("run_metropolis_MCMC_betas executes without errors and returns valid o
   dist <- "ZIP"
   epsilon <- NULL
   distance_metric <- "manhattan"
-  size_start <- c(1, 1, 1)  # Correct type for Nullable<NumericMatrix>
+  size_start <- c(1, 1, 1) # Correct type for Nullable<NumericMatrix>
   theta_start <- 0.5
-  
+
   # Run the function
   result <- run_metropolis_MCMC_betas(
     N = N,
@@ -30,7 +30,7 @@ test_that("run_metropolis_MCMC_betas executes without errors and returns valid o
     theta_start <- 0.5,
     distance_metric = distance_metric
   )
-  
+
   # Validate output structure
   expect_type(result, "list")
   expect_named(result, c("chains", "gamma", "theta", "size"))
@@ -45,10 +45,10 @@ test_that("Neighbours_combined calculates neighbors correctly", {
   potts_data <- matrix(sample(1:3, 25, replace = TRUE), nrow = 5)
   N <- nrow(potts_data)
   proposed_value <- matrix(sample(1:3, 25, replace = TRUE), nrow = 5)
-  
+
   # Run the function
   result <- Neighbours_combined(potts_data, N, proposed_value)
-  
+
   # Validate output
   expect_true(is.matrix(result), info = "Result should be a matrix")
   expect_equal(dim(result), dim(potts_data), info = "Result dimensions should match input dimensions")
@@ -80,7 +80,7 @@ test_that("pz_123 calculates probabilities correctly", {
   N <- nrow(z)
   iter <- 1
   dist <- "ZIP"
-  
+
   # Run the function
   result <- pz_123(
     z = z,
@@ -96,10 +96,9 @@ test_that("pz_123 calculates probabilities correctly", {
     iter = iter,
     dist = dist
   )
-  
+
   # Validate output
   expect_true(is.matrix(result), info = "Result should be a matrix")
   expect_equal(dim(result), dim(z), info = "Result dimensions should match input dimensions")
   expect_true(all(is.finite(result)), info = "Result should not contain NaN or Inf values")
 })
-

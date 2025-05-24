@@ -5,7 +5,7 @@
 #' Integrates proposal distributions, acceptance/rejection steps based on posterior calculations, and Approximate Bayesian Computation (ABC) updates for the \eqn{\gamma} parameter.
 #' Supports data-driven or user-defined priors for covariates.
 #'
-#'   
+#'
 #'
 #' @param N Integer specifying the dimension of the lattice (\eqn{N \times N}).
 #' @param gamma_prior Numeric. Initial (prior) value for the interaction parameter \eqn{\gamma} in the Potts model. Set at 0.3 as default.
@@ -19,7 +19,7 @@
 #' @param dist Character string specifying the distribution family: \code{"Poisson"}, \code{"NB"} (Negative Binomial), \code{"ZIP"} (Zero-Inflated Poisson, default), or \code{"ZINB"} (Zero-Inflated Negative Binomial).
 #' @param epsilon (Optional) Numeric tolerance for the ABC update of \eqn{\gamma}. If \code{NULL}, computed dynamically from data.
 #' @param distance_metric Character string specifying the distance metric for ABC: \code{"manhattan"} (default) or \code{"euclidean"}.
-#' 
+#'
 #' @details
 #' The algorithm proceeds as follows:
 #' \enumerate{
@@ -60,12 +60,12 @@
 #' gamma_prior <- 0.5
 #' iterations <- 100
 #' x_vars <- list(
-#'   distance = list(matrix(runif(N*N, 0, 10), nrow=N)),
-#'   GC = list(matrix(runif(N*N, 0, 1), nrow=N)),
-#'   TES = list(matrix(runif(N*N, 0, 2), nrow=N)),
-#'   ACC = list(matrix(runif(N*N, 0, 5), nrow=N))
+#'   distance = list(matrix(runif(N * N, 0, 10), nrow = N)),
+#'   GC = list(matrix(runif(N * N, 0, 1), nrow = N)),
+#'   TES = list(matrix(runif(N * N, 0, 2), nrow = N)),
+#'   ACC = list(matrix(runif(N * N, 0, 5), nrow = N))
 #' )
-#' y <- matrix(rpois(N*N, lambda=5), nrow=N)
+#' y <- matrix(rpois(N * N, lambda = 5), nrow = N)
 #' results <- run_metropolis_MCMC_betas(
 #'   N = N,
 #'   gamma_prior = gamma_prior,
@@ -75,7 +75,7 @@
 #'   use_data_priors = TRUE,
 #'   dist = "ZIP"
 #' )
-#' plot(results$gamma, type="l")
+#' plot(results$gamma, type = "l")
 #' }
 #'
 #' @useDynLib HMRFHiC, .registration=TRUE
@@ -84,16 +84,17 @@
 run_metropolis_MCMC_betas <- function(
     N, gamma_prior, iterations, x_vars, y, theta_start = NULL,
     size_start = NULL, use_data_priors, user_fixed_priors = NULL,
-    dist = "ZIP", epsilon = NULL, distance_metric = "manhattan"
-) {
+    dist = "ZIP", epsilon = NULL, distance_metric = "manhattan") {
   # Handle mc_cores in R (e.g., set up parallelization if needed)
   if (mc_cores > 1) {
     warning("Parallelization with mc_cores > 1 is not yet implemented; using 1 core")
     mc_cores <- 1
   }
-  
+
   # Call C++ function, excluding mc_cores
-  .Call('_HMRFHiC_run_metropolis_MCMC_betas', PACKAGE = 'HMRFHiC',
-        N, gamma_prior, iterations, x_vars, y, use_data_priors,
-        user_fixed_priors, dist, epsilon, distance_metric, size_start, theta_start)
+  .Call("_HMRFHiC_run_metropolis_MCMC_betas",
+    PACKAGE = "HMRFHiC",
+    N, gamma_prior, iterations, x_vars, y, use_data_priors,
+    user_fixed_priors, dist, epsilon, distance_metric, size_start, theta_start
+  )
 }

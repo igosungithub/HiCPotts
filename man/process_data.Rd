@@ -17,45 +17,45 @@ process_data(data, N, scale_max = 500, standardization_y = TRUE)
   \item \code{TES}: A measure related to transposable elements for the given loci.
 }}
 
-\item{N}{An integer specifying the dimension of the resulting \eqn{N \times N} matrices. The data 
-provided should correspond to \eqn{N^2} interactions or multiples thereof, as it will be reshaped 
+\item{N}{An integer specifying the dimension of the resulting \eqn{N \times N} matrices. The data
+provided should correspond to \eqn{N^2} interactions or multiples thereof, as it will be reshaped
 into one or more \eqn{N \times N} matrices.}
 
-\item{scale_max}{A numeric value indicating the maximum scaling factor for interaction counts 
-when \code{standardization_y = TRUE}. Defaults to 500. After scaling, interaction counts 
+\item{scale_max}{A numeric value indicating the maximum scaling factor for interaction counts
+when \code{standardization_y = TRUE}. Defaults to 500. After scaling, interaction counts
 range between [1, \code{scale_max}].}
 
-\item{standardization_y}{A logical value. If \code{TRUE}, interaction counts are scaled to the 
-range [1, \code{scale_max}] by applying a min-max normalization and rounding. If \code{FALSE}, 
+\item{standardization_y}{A logical value. If \code{TRUE}, interaction counts are scaled to the
+range [1, \code{scale_max}] by applying a min-max normalization and rounding. If \code{FALSE},
 the raw interaction counts are used as provided.}
 }
 \value{
 A list with two elements:
 \describe{
-  \item{\code{x_vars}}{A named list containing lists of \eqn{N \times N} matrices for each covariate: 
+  \item{\code{x_vars}}{A named list containing lists of \eqn{N \times N} matrices for each covariate:
   \code{distance}, \code{GC}, \code{TES}, \code{ACC}.}
 
-  \item{\code{y}}{A list of \eqn{N \times N} matrices representing the (scaled) interaction counts 
+  \item{\code{y}}{A list of \eqn{N \times N} matrices representing the (scaled) interaction counts
   corresponding to the covariates in \code{x_vars}.}
 }
 }
 \description{
-The \code{process_data} function takes a data frame with interaction information and associated covariates 
-(genomic bins, GC content, transposable elements(TES), and accessibility) and converts it into 
-a structured list of \eqn{N \times N} matrices suitable for modeling. It also provides options for scaling interaction counts and checking for 
+The \code{process_data} function takes a data frame with interaction information and associated covariates
+(genomic bins, GC content, transposable elements(TES), and accessibility) and converts it into
+a structured list of \eqn{N \times N} matrices suitable for modeling. It also provides options for scaling interaction counts and checking for
 required columns and missing values.
 }
 \details{
-This function processes a long-format data frame where each row represents an interaction between 
-two loci (denoted by \code{start} and \code{end}) and associated covariate values. 
+This function processes a long-format data frame where each row represents an interaction between
+two loci (denoted by \code{start} and \code{end}) and associated covariate values.
 Key steps include:
 \enumerate{
   \item Validating that required columns are present and checking for missing values.
-  \item Optionally scaling the interaction counts to a fixed range to reduce skew or prepare data 
+  \item Optionally scaling the interaction counts to a fixed range to reduce skew or prepare data
         for models sensitive to the magnitude of counts.
   \item Computing genomic distances as \eqn{|end - start|}.
-  \item Reshaping the vectorized interaction and covariate data into \eqn{N \times N} matrices. 
-        If the number of rows in \code{data} is greater than \eqn{N^2}, it splits them into multiple 
+  \item Reshaping the vectorized interaction and covariate data into \eqn{N \times N} matrices.
+        If the number of rows in \code{data} is greater than \eqn{N^2}, it splits them into multiple
         \eqn{N \times N} matrices (one for each segment of length \eqn{N^2}).
   \item Storing the resulting data in a list structure suitable for downstream analyses.
 }
@@ -68,7 +68,7 @@ The returned \code{x_vars} list contains multiple \eqn{N \times N} matrices for 
   \item \code{x_vars$ACC}: A list of \eqn{N \times N} matrices for accessibility scores.
 }
 
-The \code{y} element in the returned list contains the scaled (or raw) interaction counts structured 
+The \code{y} element in the returned list contains the scaled (or raw) interaction counts structured
 as a list of \eqn{N \times N} matrices.
 }
 \examples{
@@ -108,6 +108,6 @@ str(y_matrices)
 
 }
 \seealso{
-\code{\link{run_chain_betas}} for downstream MCMC inference 
+\code{\link{run_chain_betas}} for downstream MCMC inference
 and modeling steps once data is processed into matrix form.
 }

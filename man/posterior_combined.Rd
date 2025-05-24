@@ -8,33 +8,33 @@ posterior_combined(pred_combined, params, z, y, x_vars, component, theta, N,
                    use_data_priors, user_fixed_priors, dist, size)
 }
 \arguments{
-\item{pred_combined}{A numeric vector of predictor values generated from a prediction function. 
+\item{pred_combined}{A numeric vector of predictor values generated from a prediction function.
 Typically represents the linear predictors on a log scale.}
 
 \item{params}{A numeric vector of parameters for the model. This includes the regression coefficients.}
 
-\item{z}{A matrix or data structure representing latent variables, components, or states in the model. 
+\item{z}{A matrix or data structure representing latent variables, components, or states in the model.
 For example, in the mixture model, \code{z} it indicates component membership of observations.}
 
-\item{y}{A numeric vector of observed counts or interaction values. Each element corresponds to an observation 
+\item{y}{A numeric vector of observed counts or interaction values. Each element corresponds to an observation
 (e.g., interaction counts between genomic loci).}
 
-\item{x_vars}{A list of covariates used in the model. Each element corresponds to a predictor variable, 
+\item{x_vars}{A list of covariates used in the model. Each element corresponds to a predictor variable,
 and all should be of length \code{N}, the number of observations.}
 
-\item{component}{An integer or factor indicating the component (e.g., mixture component) for which the 
+\item{component}{An integer or factor indicating the component (e.g., mixture component) for which the
 posterior is being computed. Different components might have different parameter sets or priors.}
 
-\item{theta}{(Optional) A numeric value representing the zero-inflation parameter for Zero-Inflated models. 
-\eqn{\theta} governs the probability of extra zeros beyond what the Poisson or Negative Binomial 
+\item{theta}{(Optional) A numeric value representing the zero-inflation parameter for Zero-Inflated models.
+\eqn{\theta} governs the probability of extra zeros beyond what the Poisson or Negative Binomial
 distribution would predict.}
 
 \item{N}{An integer specifying the number of observations. This should match the length of \code{y}.}
 
-\item{use_data_priors}{A logical value indicating whether to use data-driven priors for each component. 
+\item{use_data_priors}{A logical value indicating whether to use data-driven priors for each component.
 If \code{TRUE}, the prior distributions may be estimated from the data.}
 
-\item{user_fixed_priors}{A logical value indicating whether to use user-specified priors for each component. 
+\item{user_fixed_priors}{A logical value indicating whether to use user-specified priors for each component.
 If \code{TRUE}, a user-supplied prior distribution is applied instead of a data-driven one.}
 
 \item{dist}{A character string specifying the distribution family. One of:
@@ -45,18 +45,18 @@ If \code{TRUE}, a user-supplied prior distribution is applied instead of a data-
   \item \code{"ZINB"}: Zero-Inflated Negative Binomial distribution
 }}
 
-\item{size}{(Optional) A numeric value for the dispersion parameter in the NB or ZINB distribution. 
+\item{size}{(Optional) A numeric value for the dispersion parameter in the NB or ZINB distribution.
 This parameter models overdispersion, allowing the variance to exceed the mean.}
 }
 \value{
-A numeric value representing the posterior log-probability for the given component under the 
+A numeric value representing the posterior log-probability for the given component under the
 specified distribution and modeling assumptions.
 }
 \description{
-This function computes the combined posterior value for a specified component in the model utilizing 
-a variety of distributions (Poisson, Negative Binomial, Zero-Inflated Poisson, Zero-Inflated Negative Binomial). 
-It incorporates both the likelihood of the observed data under the given model parameters and the prior 
-distributions for those parameters. When applicable, it also includes a prior on the dispersion parameter 
+This function computes the combined posterior value for a specified component in the model utilizing
+a variety of distributions (Poisson, Negative Binomial, Zero-Inflated Poisson, Zero-Inflated Negative Binomial).
+It incorporates both the likelihood of the observed data under the given model parameters and the prior
+distributions for those parameters. When applicable, it also includes a prior on the dispersion parameter
 (size) used in Negative Binomial or Zero-Inflated Negative Binomial models.
 }
 \details{
@@ -65,17 +65,17 @@ The posterior is computed as:
 
 Steps involved:
 \enumerate{
-  \item Compute the likelihood of the data (\code{y}) given the parameters, latent structure (\code{z}), 
-        covariates (\code{x_vars}), and chosen distribution (\code{dist}) using the provided \code{pred_combined} 
+  \item Compute the likelihood of the data (\code{y}) given the parameters, latent structure (\code{z}),
+        covariates (\code{x_vars}), and chosen distribution (\code{dist}) using the provided \code{pred_combined}
         values. This is done via the \code{likelihood_combined} function.
-  \item Compute the prior distribution over the parameters (\code{params}). Depending on \code{use_data_priors} 
-        and \code{user_fixed_priors}, these priors might be estimated from data or supplied by the user. 
+  \item Compute the prior distribution over the parameters (\code{params}). Depending on \code{use_data_priors}
+        and \code{user_fixed_priors}, these priors might be estimated from data or supplied by the user.
         This step uses the \code{prior_combined} function.
-  \item If the distribution is \code{"NB"} or \code{"ZINB"}, incorporate a separate prior on the dispersion 
+  \item If the distribution is \code{"NB"} or \code{"ZINB"}, incorporate a separate prior on the dispersion
         parameter (\code{size}). This step uses the \code{size_prior} function.
 }
 
-By combining the likelihood and priors, the function returns the posterior value, which is used in 
+By combining the likelihood and priors, the function returns the posterior value, which is used in
 the Bayesian inference and MCMC steps to update parameters and perform parameters estimations.
 }
 \examples{
@@ -100,7 +100,7 @@ post_val <- posterior_combined(
   z = z,
   y = y,
   x_vars = x_vars,
-  component=1,
+  component = 1,
   theta = NULL,
   N = N,
   use_data_priors = TRUE,

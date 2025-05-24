@@ -1,8 +1,8 @@
 #' @title Compute HMRFHiC Probabilities of Assigning an Interaction to Each Component
 #'
 #' @description
-#' This function computes the posterior probabilities of assigning genomic interactions to each of three mixture components (or states) in a Hidden Markov Random Field (HMRF) model. 
-#' It uses the posterior means of regression parameters obtained from MCMC simulations and combines these with user-specified distributions (zero-inflated or standard) 
+#' This function computes the posterior probabilities of assigning genomic interactions to each of three mixture components (or states) in a Hidden Markov Random Field (HMRF) model.
+#' It uses the posterior means of regression parameters obtained from MCMC simulations and combines these with user-specified distributions (zero-inflated or standard)
 #' to produce probabilities for each observed interaction.
 #'
 #' @usage
@@ -39,7 +39,7 @@
 #'
 #' @details
 #' This function is part of the HMRFHiC pipeline that models genomic interactions (e.g., Hi-C interaction counts) using a mixture model approach.
-#' The model typically considers three components (or latent states), each characterized by a distinct mean-structure and potentially different 
+#' The model typically considers three components (or latent states), each characterized by a distinct mean-structure and potentially different
 #' zero-inflation or overdispersion parameters, depending on the chosen distribution.
 #'
 #' The function:
@@ -50,8 +50,8 @@
 #'   \item Normalizes these probabilities so that each interaction is assigned a set of three probabilities summing to 1.
 #' }
 #'
-#' For zero-inflated distributions (\code{"ZIP"}, \code{"ZINB"}), a \eqn{\theta} parameter captures the probability of an excess zero. 
-#' For negative binomial distributions (\code{"NB"}, \code{"ZINB"}), an overdispersion parameter is included. 
+#' For zero-inflated distributions (\code{"ZIP"}, \code{"ZINB"}), a \eqn{\theta} parameter captures the probability of an excess zero.
+#' For negative binomial distributions (\code{"NB"}, \code{"ZINB"}), an overdispersion parameter is included.
 #'
 #' The computed probabilities can be used for downstream analysis, such as segmenting interactions into classes or modeling spatial dependence in a hidden Markov field.
 #'
@@ -66,25 +66,10 @@
 #' The returned data frame thus provides a probabilistic classification of each observed interaction into one of the three modeled components.
 #'
 #' @examples
+#' #
 #' #\donttest{
 #' # Synthetic data
 #' set.seed(123)
-#' my_data <- data.frame(
-#'   start = 1:5,
-#'   end = 6:10,
-#'   interactions = c(3, 5, 2, 4, 1),
-#'   GC = runif(5, 0, 1),
-#'   TES = runif(5, 0, 1),
-#'   ACC = runif(5, 0, 1)
-#' )
-#' mcmc_results <- list(list(chains = list(matrix(c(1, 0.5, 0.2, 0.3, 0.4), ncol=5))))
-#' result <- compute_HMRFHiC_probabilities(
-#'   data = my_data,
-#'   chain_betas = mcmc_results,
-#'   iterations = 10,
-#'   dist = "Poisson"
-#' )
-#' print(result)
 #' 
 #' 
 #' large_data <- data.frame(
@@ -95,29 +80,30 @@
 #'   TES = c(0.2, 0.5, 0.7),
 #'   ACC = c(0.9, 0.4, 0.6)
 #' )
-#' 
+#'
 #' chain_betas <- list(
-#' list(
-#'   chains = list(
-#'     matrix(runif(25, 0.1, 1), ncol = 5),
-#'     matrix(runif(25, 0.1, 1), ncol = 5),
-#'     matrix(runif(25, 0.1, 1), ncol = 5)
-#'   ),
-#'   theta = runif(5, 0.1, 0.9),
-#'   size = matrix(runif(15, 1, 10), nrow = 3)
+#'   list(
+#'     chains = list(
+#'       matrix(runif(25, 0.1, 1), ncol = 5),
+#'       matrix(runif(25, 0.1, 1), ncol = 5),
+#'       matrix(runif(25, 0.1, 1), ncol = 5)
+#'     ),
+#'     theta = runif(5, 0.1, 0.9),
+#'     size = matrix(runif(15, 1, 10), nrow = 3)
 #'   )
 #' )
-#' 
+#'
 #' result <- compute_HMRFHiC_probabilities(
 #'   data = large_data,
 #'   chain_betas = chain_betas,
-#'   iterations = 100,
-#'   dist = "ZINB"
+#'   iterations = 5,
+#'   dist = "Poisson"
 #' )
 #' print(result)
 #' # See vignette("HMRFHiC_vignette") for detailed examples with real Hi-C data.
+#' #
 #' #}
-#' 
+#'
 #' @seealso
 #' \code{\link{dpois}}, \code{\link{dnbinom}}, for probability calculations.
 #'
@@ -128,20 +114,22 @@ compute_HMRFHiC_probabilities <- function(data, chain_betas, iterations, dist = 
   required_columns <- c("start", "end", "interactions", "GC", "TES", "ACC")
   missing_columns <- setdiff(required_columns, names(data))
   if (length(missing_columns) > 0) {
-    #stop("The following required columns are missing from the data: ", paste(missing_columns, collapse = ", "))
-    stop("The following required columns are missing in the data: ",
-         paste(missing_columns, collapse = ", "))
+    # stop("The following required columns are missing from the data: ", paste(missing_columns, collapse = ", "))
+    stop(
+      "The following required columns are missing in the data: ",
+      paste(missing_columns, collapse = ", ")
+    )
   }
 
   # Prepare mydata data frame
   mydata <- as.data.frame(cbind(data$start, data$end, data$interactions, data$GC, data$TES, data$ACC))
-  colnames(mydata)<- c("start", "end", "interactions","GC", "TES", "ACC")
+  colnames(mydata) <- c("start", "end", "interactions", "GC", "TES", "ACC")
 
   interactions <- mydata$interactions
-  distance <- log(abs(mydata$end - mydata$start)+1)
-  GC <- log(mydata$GC+1)
-  TES <- log(mydata$TES+1)
-  ACC <- log(mydata$ACC+1)
+  distance <- log(abs(mydata$end - mydata$start) + 1)
+  GC <- log(mydata$GC + 1)
+  TES <- log(mydata$TES + 1)
+  ACC <- log(mydata$ACC + 1)
 
   # Calculate burn-in
   burnin <- (iterations / 2)
@@ -239,7 +227,7 @@ compute_HMRFHiC_probabilities <- function(data, chain_betas, iterations, dist = 
   interactions_cap <- pmin(interactions, 500)
   # Define combined_prob function within the main function
   combined_prob <- function(y, lambda, theta = NULL, overdisp = NULL, dist = c("ZIP", "NB", "Poisson", "ZINB")) {
-    dist <- match.arg(dist)  # Match the specified distribution to one of the allowed options
+    dist <- match.arg(dist) # Match the specified distribution to one of the allowed options
     if (dist == "ZIP") {
       if (is.null(theta)) stop("ZIP requires a non-null theta parameter")
       return(ifelse(y == 0, log(theta + (1 - theta) * exp(-lambda)), log(1 - theta) + dpois(y, lambda = lambda, log = TRUE)))
