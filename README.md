@@ -124,7 +124,44 @@ res    <- run_chain_betas(prep$y, N = N, iterations = 100,
                           x_vars = prep$x_vars,
                           thetap = 0.5, size_initial = c(1,1,1),
                           dist   = "Poisson", mc_cores = 1)
+```
 
+Another example is using the test_data2.csv file inside the folder; inst/extdata
+
+```r
+mydata=read.csv("~/inst/extdata/test_data2.csv")
+
+N=20
+thetap=0.6
+
+iterations=2000
+
+
+# Assuming mydata is a data frame
+colnames(mydata)[colnames(mydata) %in% c("start.i.", "start.i", "start")] <- "start"
+colnames(mydata)[colnames(mydata) %in% c("end.j.", "end.j", "end")] <- "end"
+colnames(mydata)[colnames(mydata) %in% c("Acc", "ACC")] <- "ACC"
+colnames(mydata)[colnames(mydata) %in% c("GC", "Gc")] <- "GC"
+colnames(mydata)[colnames(mydata) %in% c("Tes", "TEs", "TES")] <- "TES"
+colnames(mydata)[colnames(mydata) %in% c("interactions", "interaction")] <- "interactions"
+
+
+
+scaled_data<-process_data(mydata, N, scale_max = 500, standardization_y = TRUE)
+
+
+chains=run_chain_betas(
+  N,
+  gamma_prior=0.3,
+  iterations=iterations,
+  x_vars=scaled_data[["x_vars"]],
+  y=scaled_data[["y"]],
+  use_data_priors=TRUE,
+  dist="Poisson",
+  distance_metric="manhattan",
+  mc_cores = 22
+)
+```
 
 License
 MIT © 2025 Itunu Osuntoki
