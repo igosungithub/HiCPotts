@@ -1,13 +1,13 @@
-# HMRFHiC <img src="man/figures/logo.png" height="110" align="right" />
+# HiCPotts <img src="man/figures/logo.png" height="110" align="right" />
 
 *A Bayesian framework for detection of enriched Hi‑C interactions and experimental biases in Hi-C data*  
 
-[![R‑CMD‑check](https://github.com/igosungithub/HMRFHiC/actions/workflows/R‑CMD‑check.yml/badge.svg)](https://github.com/igosungithub/HMRFHiC/actions) &nbsp;
+[![R‑CMD‑check](https://github.com/igosungithub/HiCPotts/actions/workflows/R‑CMD‑check.yml/badge.svg)](https://github.com/igosungithub/HiCPotts/actions) &nbsp;
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
-## 1  Why HMRFHiC?
+## 1  Why HiCPotts?
 
 Hi‑C interaction counts are  
 
@@ -15,7 +15,7 @@ Hi‑C interaction counts are
 * **over‑dispersed** and often **zero‑inflated**, and  
 * **spatially correlated** along the genome.
 
-**HMRFHiC** deals with these challenges by combining
+**HiCPotts** deals with these challenges by combining
 
 | Layer | Details |
 |-------|---------------------------------------|
@@ -32,12 +32,12 @@ Hi‑C interaction counts are
 ## released version (once on Bioconductor)
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-BiocManager::install("HMRFHiC")
+BiocManager::install("HiCPotts")
 
 Requirements: R ≥ 4.2, C++17 compiler, plus
 Rcpp, RcppArmadillo, parallel.
 
-library(HMRFHiC)
+library(HiCPotts)
 
 ## 1  Load long‑format interaction table
 df <- read.csv("hic_interactions.csv")  # start, end, interactions, GC, ACC, TES

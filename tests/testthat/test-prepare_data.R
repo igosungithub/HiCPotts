@@ -1,8 +1,8 @@
 test_that("returns a data.frame with the correct columns and types", {
-  wig <- system.file("extdata", "DNaseI_BG3_gr_chr4.bedGraph", package = "HMRFHiC")
-  chain <- system.file("extdata", "dm3ToDm6_chr4_only.chain", package = "HMRFHiC")
-  te <- system.file("extdata", "dm6_TEs_chr4.gtf", package = "HMRFHiC")
-  hic <- system.file("extdata", "BG3_WT_merged_hic_matrix_chr4_100Kb.cool", package = "HMRFHiC")
+  wig <- system.file("extdata", "DNaseI_BG3_gr_chr4.bedGraph", package = "HiCPotts")
+  chain <- system.file("extdata", "dm3ToDm6_chr4_only.chain", package = "HiCPotts")
+  te <- system.file("extdata", "dm6_TEs_chr4.gtf", package = "HiCPotts")
+  hic <- system.file("extdata", "BG3_WT_merged_hic_matrix_chr4_100Kb.cool", package = "HiCPotts")
 
   expect_true(file.exists(wig))
   expect_true(file.exists(chain))
@@ -29,7 +29,7 @@ test_that("returns a data.frame with the correct columns and types", {
 })
 
 test_that("builds full 20kb × 20kb grid over 1–40kb", {
-  hic <- system.file("extdata", "BG3_WT_merged_hic_matrix_chr4_100Kb.cool", package = "HMRFHiC")
+  hic <- system.file("extdata", "BG3_WT_merged_hic_matrix_chr4_100Kb.cool", package = "HiCPotts")
   bb <- get_data(
     file_path      = hic,
     chr            = "chr4",
@@ -44,10 +44,10 @@ test_that("builds full 20kb × 20kb grid over 1–40kb", {
 })
 
 test_that("GC, ACC, and TES are in valid ranges or NA", {
-  wig <- system.file("extdata", "DNaseI_BG3_gr_chr4.bedGraph", package = "HMRFHiC")
-  chain <- system.file("extdata", "dm3ToDm6_chr4_only.chain", package = "HMRFHiC")
-  te <- system.file("extdata", "dm6_TEs_chr4.gtf", package = "HMRFHiC")
-  hic <- system.file("extdata", "BG3_WT_merged_hic_matrix_chr4_100Kb.cool", package = "HMRFHiC")
+  wig <- system.file("extdata", "DNaseI_BG3_gr_chr4.bedGraph", package = "HiCPotts")
+  chain <- system.file("extdata", "dm3ToDm6_chr4_only.chain", package = "HiCPotts")
+  te <- system.file("extdata", "dm6_TEs_chr4.gtf", package = "HiCPotts")
+  hic <- system.file("extdata", "BG3_WT_merged_hic_matrix_chr4_100Kb.cool", package = "HiCPotts")
 
   bb <- get_data(
     file_path      = hic,

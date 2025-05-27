@@ -2,7 +2,7 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 run_metropolis_MCMC_betas <- function(N, gamma_prior, iterations, x_vars, y, use_data_priors, user_fixed_priors = NULL, dist = "ZIP", epsilon = NULL, distance_metric = "manhattan", size_start = NULL, theta_start = NULL) {
-  .Call(`_HMRFHiC_run_metropolis_MCMC_betas`, N, gamma_prior, iterations, x_vars, y, use_data_priors, user_fixed_priors, dist, epsilon, distance_metric, size_start, theta_start)
+    .Call(`_HiCPotts_run_metropolis_MCMC_betas`, N, gamma_prior, iterations, x_vars, y, use_data_priors, user_fixed_priors, dist, epsilon, distance_metric, size_start, theta_start)
 }
 
 #' @name Neighbours_combined
@@ -10,28 +10,28 @@ run_metropolis_MCMC_betas <- function(N, gamma_prior, iterations, x_vars, y, use
 #'
 #' @description
 #' Computes the number of agreeing neighbors for each site in a Potts model lattice.
-#' The Potts model is a generalization of the Ising model, where each site on a lattice can
-#' take on multiple states. By counting how many of a site's four neighbors share the same
+#' The Potts model is a generalization of the Ising model, where each site on a lattice can 
+#' take on multiple states. By counting how many of a site's four neighbors share the same 
 #' state, this function provides a measure of clustering within the lattice.
 #'
 #' @usage
 #' Neighbours_combined(potts_data, N, proposed_value = NULL)
 #'
-#' @param potts_data A numeric \eqn{N \times N} matrix representing the current configuration
+#' @param potts_data A numeric \eqn{N \times N} matrix representing the current configuration 
 #'   of the Potts model. Each element corresponds to the state of a particular site.
 #'
-#' @param N An integer specifying the dimension of the \code{potts_data} lattice (i.e., the
+#' @param N An integer specifying the dimension of the \code{potts_data} lattice (i.e., the 
 #'   lattice has \code{N} rows and \code{N} columns).
 #'
-#' @param proposed_value (Optional) A numeric \eqn{N \times N} matrix representing a proposed
-#'   configuration of the Potts model. If provided, the function computes neighbor relationships
-#'   relative to this proposed configuration; otherwise, it uses a shifted version of \code{potts_data}
+#' @param proposed_value (Optional) A numeric \eqn{N \times N} matrix representing a proposed 
+#'   configuration of the Potts model. If provided, the function computes neighbor relationships 
+#'   relative to this proposed configuration; otherwise, it uses a shifted version of \code{potts_data} 
 #'   to determine neighbors.
 #'
 #' @details
-#' The function checks each site and compares it with its four directional neighbors
-#' (up, down, left, right). For each neighbor that has the same state, a value of 1 is assigned.
-#' Summing these values for each site results in a measure of how "similar" the immediate neighborhood
+#' The function checks each site and compares it with its four directional neighbors 
+#' (up, down, left, right). For each neighbor that has the same state, a value of 1 is assigned. 
+#' Summing these values for each site results in a measure of how "similar" the immediate neighborhood 
 #' is to that site.
 #'
 #' Internally, the function:
@@ -41,12 +41,12 @@ run_metropolis_MCMC_betas <- function(N, gamma_prior, iterations, x_vars, y, use
 #'   \item Sums the contributions from all four directions to form the \code{Neighbours_total} matrix.
 #' }
 #'
-#' By providing an optional \code{proposed_value} matrix, this function can be integrated into an
-#' MCMC algorithm where new configurations are proposed and evaluated
+#' By providing an optional \code{proposed_value} matrix, this function can be integrated into an 
+#' MCMC algorithm where new configurations are proposed and evaluated 
 #' based on their local coherence.
 #'
 #' @return
-#' A numeric \eqn{N \times N} matrix, \code{Neighbours_total}, where each element is the count of
+#' A numeric \eqn{N \times N} matrix, \code{Neighbours_total}, where each element is the count of 
 #' how many of the four neighbors match the state of that site.
 #'
 #' @examples
@@ -72,9 +72,10 @@ run_metropolis_MCMC_betas <- function(N, gamma_prior, iterations, x_vars, y, use
 NULL
 
 Neighbours_combined <- function(potts_data, N, proposed_value = NULL) {
-  .Call(`_HMRFHiC_Neighbours_combined`, potts_data, N, proposed_value)
+    .Call(`_HiCPotts_Neighbours_combined`, potts_data, N, proposed_value)
 }
 
 pz_123 <- function(z, sum_neighbours, y, pred_combined, chains, chain_gamma, x_vars, theta, size_chain, N, iter, dist) {
-  .Call(`_HMRFHiC_pz_123`, z, sum_neighbours, y, pred_combined, chains, chain_gamma, x_vars, theta, size_chain, N, iter, dist)
+    .Call(`_HiCPotts_pz_123`, z, sum_neighbours, y, pred_combined, chains, chain_gamma, x_vars, theta, size_chain, N, iter, dist)
 }
+

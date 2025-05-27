@@ -1,5 +1,5 @@
 Changes in version 0.99.0 (2025-05-22):
-- Initial release of HMRFHiC.
+- Initial release of HiCPotts.
 - Added core functions: get_data(), process_data(), run_chain_betas(), compute_HMRFHiC_probabilities().
 - Supported distributions: Poisson, Zero-Inflated Poisson, Negative Binomial, Zero-Inflated Negative Binomial.
 - Implemented C++ optimizations using Rcpp and RcppArmadillo for performance.

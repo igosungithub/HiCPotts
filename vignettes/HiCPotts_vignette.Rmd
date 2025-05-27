@@ -1,0 +1,292 @@
+---
+title: "Bayesian Analysis of Hi-C Interactions with HiCPotts"
+author: "Itunu Godwin Osuntoki, Nicolae Radu Zabet"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Bayesian Analysis of Hi-C Interactions with HiCPotts}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Introduction
+
+The HiCPotts package provides a comprehensive framework for Bayesian analysis of Hi-C interaction data using a Hidden Markov Random Field (HMRF) model. Hi-C is a high-throughput sequencing technique that captures chromatin interactions across the genome, revealing spatial organization. This package models these interactions using a mixture of distributions (Poisson, Negative Binomial, Zero-Inflated Poisson, or Zero-Inflated Negative Binomial) while accounting for covariates, genomic distance, GC content, accessibility, and transposable element (TE) counts. The HMRF framework incorporates spatial dependencies via a Potts model, and the package employs Markov Chain Monte Carlo (MCMC) methods for parameter estimation.
+
+An HMRF models spatial dependencies in a lattice (e.g., a matrix of Hi-C interactions) by assigning each site to one of several latent states (mixture components). The Potts model governs spatial interactions, encouraging neighboring sites to share the same state, controlled by an interaction parameter ($\gamma$).
+
+The package uses MCMC to estimate model parameters (regression coefficients ($\beta$), zero-inflation parameter ($\theta$), dispersion parameter for Binomial distributions, and ($\gamma$)) by sampling from their posterior distributions. Covariates like genomic distance and GC content adjust for biases in interaction counts. Each Hi-C interaction is modeled as belonging to one of three mixture components following a specified distribution.
+
+The package performance was optimized through C++ implementations using Rcpp and RcppArmadillo. The package also supports parallel processing and flexible distribution choices, making it suitable for large-scale genomic analyses.
+
+# Installation
+
+HiCPotts depends on several CRAN and Bioconductor packages.
+
+Install them as follows:
+
+Install CRAN dependencies
+
+
+```{r setup-global, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE, echo = TRUE, collapse = TRUE)
+```
+
+```{r install-cran, echo=TRUE, eval=FALSE}
+install.packages(c("Rcpp", "RcppArmadillo", "parallel"))
+```
+
+```{r install-bioc, echo=TRUE, eval=FALSE}
+# Install Bioconductor dependencies
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+BiocManager::install(c("rhdf5", "strawr", "rtracklayer", "GenomicRanges", "BSgenome", "Biostrings"))
+```
+
+```{r load-package, echo=TRUE, eval=TRUE}
+# Loading the package:
+# install.packages(HiCPotts)
+library(HiCPotts)
+```
+
+# Workflow Overview
+
+The HiCPotts workflow involves four main steps:
+
+1.  Data Loading: Use `get_data()` to read Hi-C contact matrices (`.hic`, `.cool`, `.h5`) and annotate bins with GC content, accessibility, and TE counts.
+
+2.  Data Processing: Use `process_data()` to convert the data into (N \times N) matrices of interactions and covariates.
+
+3.  MCMC Simulation: Use `run_chain_betas()` to run MCMC chains, estimating parameters and latent state assignments.
+
+4.  Probability Computation: Use `compute_HMRFHiC_probabilities()` to calculate posterior probabilities of component assignments.
+
+We’ll demonstrate this workflow using synthetic Hi-C data for simplicity.
+
+## Step 1: Loading Hi-C Data
+
+The `get_data()` function reads Hi-C contact matrices and annotates bins with covariates. For this example, we simulate a small dataset instead of using real Hi-C files, which require specific file formats and genome annotations.
+
+Simulate a 10x10 Hi-C dataset
+
+```{r simulate-data, include=FALSE, eval=TRUE}
+set.seed(123)
+
+N <- 10
+
+bins <- seq(1, 20000, by = 2000)
+
+data <- expand.grid(start = bins, start.j. = bins)
+
+data$end.i. <- data$start + 1999
+
+data$end <- data$start.j. + 1999
+
+data$chrom <- "chr2L"
+
+data$GC <- runif(nrow(data), 0.3, 0.7) # Simulated GC content
+
+data$ACC <- runif(nrow(data), 0, 1) # Simulated accessibility
+
+data$TES <- rpois(nrow(data), 2) # Simulated TE counts
+
+data$interactions <- rpois(nrow(data), lambda = 5) # Simulated interaction counts
+data <- as.data.frame(data)
+
+head(data)
+```
+
+In practice, you would use get_data() to load real Hi-C data:
+
+```{r get_data, include=FALSE, eval=FALSE}
+# Example (not run)
+
+data <- prepare_data(
+  file_path = "path/to/hic_file.h5",
+  chr = "chr2L",
+  start = 1,
+  end = 20000,
+  resolution = 2000,
+  genome_package = "BSgenome.Dmelanogaster.UCSC.dm6",
+  acc_wig = "path/to/dnase.wig",
+  chain_file = "path/to/chain.file",
+  te_granges = "path/to/te.gtf"
+)
+```
+
+## Step 2: Processing Data
+
+The `process_data()` function converts the data frame into a list of (N $\times$ N) matrices for interactions (`y`) and covariates (`x_vars`), optionally scaling interaction counts.
+
+```{r process_data, include=FALSE, eval=TRUE}
+processed <- process_data(data, N = N, scale_max = 500, standardization_y = TRUE)
+
+x_vars <- processed[["x_vars"]] # Single matrix for this example
+y <- processed[["y"]]
+
+str(x_vars) # Lists of distance, GC, TEs, ACC matrices
+```
+
+This produces matrices for distance, GC, TEs, ACC, and interaction counts, ready for MCMC.
+
+## Step 3: Running MCMC Simulations
+
+The `run_chain_betas()` function runs MCMC simulations to estimate parameters (($\beta$), ($\gamma$), ($\theta$ (for Zero-Inflated distributions)), size(for Negative binomial distributions)) and latent state assignments ((z)). In the example below, we use the Zero-Inflated Negative Binomial (ZINB) distribution to model the simulated sparse Hi-C data.
+
+```{r setup_MCMC, include=FALSE, eval=TRUE}
+# Set MCMC parameters
+gamma_prior <- 0.3
+
+iterations <- 20
+
+theta_start <- c(0.5)
+
+# size_start <- c(1, 1, 1)
+
+dist <- "ZIP"
+```
+
+```{r run_MCMC, include=FALSE, eval=TRUE}
+# Run MCMC
+results <- run_chain_betas(
+  N = N,
+  gamma_prior = gamma_prior,
+  iterations = iterations,
+  x_vars = x_vars,
+  y = y,
+  theta_start = theta_start,
+  use_data_priors = TRUE,
+  # user_fixed_priors = FALSE,
+  # epsilon = NULL,
+  distance_metric = "manhattan",
+  dist = dist,
+  # size_start = size_start,
+  mc_cores = 1
+)
+```
+
+```{r MCMC_results, include=FALSE, eval=TRUE}
+# Extract results
+chains <- results[["chains"]]
+
+gamma <- results[["gamma"]]
+
+theta <- results[["theta"]]
+
+# size <- results[["size]]
+```
+
+The output includes chains for regression parameters (`chains`), the Potts interaction parameter (`gamma`), zero-inflation parameter (`theta`), and dispersion parameters (`size`).
+
+## Step 4: Computing Posterior Probabilities
+
+The `compute_HMRFHiC_probabilities()` function calculates posterior probabilities for each interaction belonging to one of three mixture components, using the MCMC chains.
+
+```{r compute_result, include=FALSE, eval=TRUE}
+# Compute probabilities
+probs <- compute_HMRFHiC_probabilities(
+  data = data,
+  chain_betas = chains,
+  iterations = iterations,
+  dist = "ZIP"
+)
+
+probs$prob1 # This produces matrices of probabilities for the first component, which translate to assigning interactions to biological states (e.g., active vs. inactive chromatin).
+```
+
+# Advanced Usage
+
+## Custom Priors
+
+To use user-specified priors instead of data-driven priors:
+```{r User_prior, include=FALSE, eval=TRUE}
+user_priors <- list(
+  list(mean = c(0, 0, 0, 0, 0), sd = c(1, 1, 1, 1, 1)),
+  list(mean = c(0, 0, 0, 0, 0), sd = c(1, 1, 1, 1, 1)),
+  list(mean = c(0, 0, 0, 0, 0), sd = c(1, 1, 1, 1, 1))
+)
+
+# Run MCMC
+results <- run_chain_betas(
+  N = N,
+  gamma_prior = gamma_prior,
+  iterations = iterations,
+  x_vars = x_vars,
+  y = y,
+  theta_start = theta_start,
+  # use_data_priors = TRUE,
+  user_fixed_priors = user_priors,
+  # epsilon = NULL,
+  distance_metric = "manhattan",
+  dist = dist,
+  # size_start = size_start,
+  mc_cores = 1
+)
+```
+
+## Parallel Processing
+
+For multiple Hi-C matrices, use mc_cores to parallelize:
+
+```{r multiple_matrices, include=FALSE, eval=FALSE}
+y_list <- list(y, y) # Example with two matrices
+
+results <- run_chain_betas(
+  N = N,
+  gamma_prior = gamma_prior,
+  iterations = iterations,
+  x_vars = x_vars,
+  y = y_list,
+  theta_start = theta_start,
+  size_start = size_start,
+  use_data_priors = TRUE,
+  user_fixed_priors = NULL,
+  epsilon = NULL,
+  distance_metric = "manhattan",
+  dist = dist,
+  mc_cores = 2
+)
+```
+
+## Other Distributions
+
+The package supports Poisson, NB, ZIP, and ZINB distributions. 
+For example, to use Poisson:
+
+```{r Additional_distributions, include=FALSE, eval=TRUE}
+# Run MCMC
+results <- run_chain_betas(
+  N = N,
+  gamma_prior = gamma_prior,
+  iterations = iterations,
+  x_vars = x_vars,
+  y = y,
+  theta_start = theta_start,
+  # use_data_priors = TRUE,
+  user_fixed_priors = user_priors,
+  # epsilon = NULL,
+  distance_metric = "manhattan",
+  dist = "Poisson",
+  # size_start = size_start,
+  mc_cores = 1
+)
+```
+
+# Technical Notes
+
+Performance: The following functions, `pz_123()`, `run_metropolis_MCMC_betas()`, and `Neighbours_combined()`, are implemented in C++ using Rcpp and RcppArmadillo for efficiency, crucial for large Hi-C matrices.
+
+Utility Functions: The following functions, `proposaldensity_combined()`, `likelihood_gamma()`, `gamma_prior_value()`, `posterior_combined()`, `prior_combined()`, `likelihood_combined()`, `proposalfunction()`, and `size_prior()`, support the MCMC process and are typically not called directly by users.
+
+# Conclusion
+
+The HiCPotts package offers a powerful tool for Bayesian analysis of Hi-C data, integrating spatial dependencies, information from sources of bias associated with Hi-C data, and flexible mixture models. This page covered the core workflow, but the package’s functions can be customized for specific research needs, such as different genomic regions or distribution assumptions.
+
+For further details, consult the package documentation (`?HiCPotts`) or contact the package maintainers. We hope HiCPotts facilitates your genomic research!
+
+
+
+```{r, echo = FALSE}
+sessionInfo()
+```

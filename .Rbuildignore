@@ -2,3 +2,5 @@
 ^Meta$
 ^Makevars$
 ^data-raw/
+^.*\.Rproj$
+^\.Rproj\.user$

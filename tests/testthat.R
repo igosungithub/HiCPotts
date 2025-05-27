@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(HMRFHiC)
+library(HiCPotts)
 
-test_check("HMRFHiC")
+test_check("HiCPotts")

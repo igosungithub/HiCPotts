@@ -2,7 +2,7 @@
 % Please edit documentation in R/run_chain.R
 \name{run_chain_betas}
 \alias{run_chain_betas}
-\title{MCMC Chain Execution for HMRFHiC Simulations}
+\title{MCMC Chain Execution for HiCPotts Simulations}
 \usage{
 run_chain_betas(
   N,

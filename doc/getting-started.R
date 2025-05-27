@@ -5,4 +5,4 @@ knitr::opts_chunk$set(
 )
 
 ## ----setup--------------------------------------------------------------------
-library(HMRFHiC)
+library(HiCPotts)

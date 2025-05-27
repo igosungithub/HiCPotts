@@ -13,7 +13,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 
 // run_metropolis_MCMC_betas
 List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations, List x_vars, NumericMatrix y, bool use_data_priors, Nullable<List> user_fixed_priors, std::string dist, Nullable<double> epsilon, std::string distance_metric, Nullable<NumericMatrix> size_start, Nullable<double> theta_start);
-RcppExport SEXP _HMRFHiC_run_metropolis_MCMC_betas(SEXP NSEXP, SEXP gamma_priorSEXP, SEXP iterationsSEXP, SEXP x_varsSEXP, SEXP ySEXP, SEXP use_data_priorsSEXP, SEXP user_fixed_priorsSEXP, SEXP distSEXP, SEXP epsilonSEXP, SEXP distance_metricSEXP, SEXP size_startSEXP, SEXP theta_startSEXP) {
+RcppExport SEXP _HiCPotts_run_metropolis_MCMC_betas(SEXP NSEXP, SEXP gamma_priorSEXP, SEXP iterationsSEXP, SEXP x_varsSEXP, SEXP ySEXP, SEXP use_data_priorsSEXP, SEXP user_fixed_priorsSEXP, SEXP distSEXP, SEXP epsilonSEXP, SEXP distance_metricSEXP, SEXP size_startSEXP, SEXP theta_startSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -35,7 +35,7 @@ END_RCPP
 }
 // Neighbours_combined
 NumericMatrix Neighbours_combined(NumericMatrix potts_data, int N, Nullable<NumericMatrix> proposed_value);
-RcppExport SEXP _HMRFHiC_Neighbours_combined(SEXP potts_dataSEXP, SEXP NSEXP, SEXP proposed_valueSEXP) {
+RcppExport SEXP _HiCPotts_Neighbours_combined(SEXP potts_dataSEXP, SEXP NSEXP, SEXP proposed_valueSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -48,7 +48,7 @@ END_RCPP
 }
 // pz_123
 NumericMatrix pz_123(NumericMatrix z, NumericMatrix sum_neighbours, NumericMatrix y, Function pred_combined, List chains, NumericVector chain_gamma, List x_vars, double theta, NumericMatrix size_chain, int N, int iter, std::string dist);
-RcppExport SEXP _HMRFHiC_pz_123(SEXP zSEXP, SEXP sum_neighboursSEXP, SEXP ySEXP, SEXP pred_combinedSEXP, SEXP chainsSEXP, SEXP chain_gammaSEXP, SEXP x_varsSEXP, SEXP thetaSEXP, SEXP size_chainSEXP, SEXP NSEXP, SEXP iterSEXP, SEXP distSEXP) {
+RcppExport SEXP _HiCPotts_pz_123(SEXP zSEXP, SEXP sum_neighboursSEXP, SEXP ySEXP, SEXP pred_combinedSEXP, SEXP chainsSEXP, SEXP chain_gammaSEXP, SEXP x_varsSEXP, SEXP thetaSEXP, SEXP size_chainSEXP, SEXP NSEXP, SEXP iterSEXP, SEXP distSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -70,13 +70,13 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_HMRFHiC_run_metropolis_MCMC_betas", (DL_FUNC) &_HMRFHiC_run_metropolis_MCMC_betas, 12},
-    {"_HMRFHiC_Neighbours_combined", (DL_FUNC) &_HMRFHiC_Neighbours_combined, 3},
-    {"_HMRFHiC_pz_123", (DL_FUNC) &_HMRFHiC_pz_123, 12},
+    {"_HiCPotts_run_metropolis_MCMC_betas", (DL_FUNC) &_HiCPotts_run_metropolis_MCMC_betas, 12},
+    {"_HiCPotts_Neighbours_combined", (DL_FUNC) &_HiCPotts_Neighbours_combined, 3},
+    {"_HiCPotts_pz_123", (DL_FUNC) &_HiCPotts_pz_123, 12},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_HMRFHiC(DllInfo *dll) {
+RcppExport void R_init_HiCPotts(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

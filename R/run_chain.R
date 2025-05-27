@@ -1,5 +1,5 @@
 #'
-#' @title MCMC Chain Execution for HMRFHiC Simulations
+#' @title MCMC Chain Execution for HiCPotts Simulations
 #'
 #' @description
 #' The run_metropolis_MCMC_betas function serves as a high-level wrapper to execute the MCMC sampling process on Hi-C interaction data.

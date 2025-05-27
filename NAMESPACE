@@ -38,6 +38,6 @@ importFrom(stats,rgamma)
 importFrom(stats,rnorm)
 importFrom(strawr,straw)
 importFrom(utils,read.table)
-useDynLib(HMRFHiC, .registration=TRUE)
+useDynLib(HiCPotts, .registration=TRUE)
 
 

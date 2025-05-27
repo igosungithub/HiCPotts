@@ -120,8 +120,8 @@
 #' @export
 pz_123 <- function(z, sum_neighbours, y, pred_combined, chains, chain_gamma, x_vars, theta, size_chain, N, iter, dist) {
   .Call(
-    "_HMRFHiC_pz_123",
-    PACKAGE = "HMRFHiC",
+    "_HiCPotts_pz_123",
+    PACKAGE = "HiCPotts",
     z, sum_neighbours, y, pred_combined, chains, chain_gamma, x_vars, theta, size_chain, N, iter, dist
   )
 }
