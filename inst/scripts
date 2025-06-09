@@ -1,0 +1,14 @@
+Cool files:
+
+1) BG3_WT_merged_hic_matrix_chr4_100Kb.cool
+
+https://genome.cshlp.org/content/29/4/613.short for details on how the data was pre-processed. The data can be downloaded from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE122603
+
+2) DNaseI_BG3_gr_chr4.bedGraph from https://www.nature.com/articles/nature09725
+
+3) dm6_TEs_chr4.gtf FlyBase (dos Santos et al. 2015) https://academic.oup.com/nar/article/43/D1/D690/2437432?login=false
+
+4) dm3ToDm6.chain.over
+The liftover file was taken from https://hgdownload.soe.ucsc.edu/goldenPath/dm3/liftOver/ and used to liftover the DNase data from dm3 to dm6.
+
+5) test_data2.csv is a sample of processed data from the above files for Chromosome X.
