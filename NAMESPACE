@@ -1,5 +1,3 @@
-exportPattern("^[[:alpha:]]+")
-
 export(pz_123)
 export(run_metropolis_MCMC_betas)
 export(Neighbours_combined)
