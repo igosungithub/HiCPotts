@@ -11,6 +11,8 @@ vignette: >
 
 # Introduction
 
+High-throughput chromosome conformation capture (Hi-C) technologies have revolutionized our understanding of 3D genome organization by mapping interactions between genomic loci. However, Hi-C data are inherently noisy and affected by experimental biases such as GC content, transposable elements, and DNA accessibility, which complicate the identification of biologically significant interactions.
+
 The HiCPotts package provides a comprehensive framework for Bayesian analysis of Hi-C interaction data using a Hidden Markov Random Field (HMRF) model. Hi-C is a high-throughput sequencing technique that captures chromatin interactions across the genome, revealing spatial organization. This package models these interactions using a mixture of distributions (Poisson, Negative Binomial, Zero-Inflated Poisson, or Zero-Inflated Negative Binomial) while accounting for covariates, genomic distance, GC content, accessibility, and transposable element (TE) counts. The HMRF framework incorporates spatial dependencies via a Potts model, and the package employs Markov Chain Monte Carlo (MCMC) methods for parameter estimation.
 
 An HMRF models spatial dependencies in a lattice (e.g., a matrix of Hi-C interactions) by assigning each site to one of several latent states (mixture components). The Potts model governs spatial interactions, encouraging neighboring sites to share the same state, controlled by an interaction parameter ($\gamma$).
@@ -18,6 +20,42 @@ An HMRF models spatial dependencies in a lattice (e.g., a matrix of Hi-C interac
 The package uses MCMC to estimate model parameters (regression coefficients ($\beta$), zero-inflation parameter ($\theta$), dispersion parameter for Binomial distributions, and ($\gamma$)) by sampling from their posterior distributions. Covariates like genomic distance and GC content adjust for biases in interaction counts. Each Hi-C interaction is modeled as belonging to one of three mixture components following a specified distribution.
 
 The package performance was optimized through C++ implementations using Rcpp and RcppArmadillo. The package also supports parallel processing and flexible distribution choices, making it suitable for large-scale genomic analyses.
+
+# Motivation
+
+Most existing computational methods fail to adequately model the spatial dependencies and overdispersion in Hi-C contact matrices, limiting their ability to distinguish true signals from other components such as noise. The HiCPotts package addresses these challenges by providing a novel Bayesian framework to detect enriched interactions while accounting for experimental biases in Hi-C data. Its integration into Bioconductor is motivated by its robust statistical approach, computational efficiency, and ability to provide insights into bias sources, making it a valuable tool for researchers studying chromatin architecture in diverse biological contexts.
+
+HiCPotts package also extends the existing knowledge of classifying interacting loci into two components to three components (true signal, false signal, and noise) and its focus on bias correction (DNA accessibility, transposable elements) enhance its utility for integrative genomic studies. 
+
+# Comparison with Existing Packages
+There are several Bioconductor packages that addresses Hi-C data analysis, each with distinct functionalities and scopes. We highlight the uniqueness of the HiCPotts package with other existing packages:
+
+a.  diffHic: The diffHic package focuses on detecting differential interactions between biological conditions using the edgeR framework for statistical modeling. diffHic provides methods for read pair alignment, binning, filtering, and normalization of biases (e.g., trended or CNV-driven). While diffHic excels at differential analysis, it does not explicitly model spatial dependencies in Hi-C data or account for overdispersion as HiCPotts does. HiCPotts is better suited for identifying enriched interactions within a Hi-C experiment and exploring bias sources, whereas diffHic is ideal for comparative studies across conditions.
+
+
+b.  HiCcompare and multiHiCcompare: HiCcompare offers joint normalization and difference detection for multiple Hi-C datasets, operating on sparse chromatin interaction matrices. multiHiCcompare extends this to handle multiple groups and replicates using cyclic loess normalization and a general linear model (GLM) based on edgeR. Both packages emphasize comparative analysis and normalization but do not focus on detecting enriched interactions within a dataset or modeling spatial dependencies. HiCPotts’s Bayesian approach and bias correction make it complementary, as it prioritizes significant interaction detection and bias insight over differential analysis.
+
+c.  HiCDCPlus: HiCDCPlus enables significant interaction calling and differential analysis for Hi-C and HiChIP data using a negative binomial generalized linear model. It includes tools for topologically associating domain (TAD) and A/B compartment calling, integrating with visualization tools. Like HiCPotts, it calls significant interactions, but HiCPotts’s HMRF-based model and ABC approach provide superior handling of spatial dependencies and computational tractability for chromosome-wide analysis. HiCDCPlus requires GC content information (computable internally), while HiCPotts additionally corrects for transposable elements and DNA accessibility biases.
+
+d.  scHiCcompare: Designed for single-cell Hi-C data, scHiCcompare supports imputation, normalization, and differential interaction analysis across single-cell datasets. Its focus on single-cell data makes it distinct from HiCPotts, which targets bulk Hi-C data. HiCPotts’s ability to model overdispersion and spatial dependencies is not replicated in scHiCcompare, which prioritizes single-cell-specific challenges.
+
+
+Other Tools: Packages like HiCdat and HiCExperiment provide preprocessing, visualization, or data manipulation for Hi-C data but lack the statistical rigor of HiCPotts for interaction detection. HiCdat offers a graphical interface for preprocessing and integrative analysis with other omics data, while HiCExperiment provides data structures for 3C-related experiments. Neither focuses on enriched interaction detection or bias correction like HiCPotts.
+
+# Features of HiCPotts
+
+HiCPotts allows researchers to identify significant intra-chromosomal interactions in Hi-C data while correcting for experimental biases. Its key features include:
+
+1.  Use of Zero-Inflated distributions to handle overdispersion.
+
+2.  An HMRF-based Bayesian framework with the Potts model for spatial dependency.
+
+3.  ABC for computationally efficient handling of the Potts model’s normalizing constant.
+
+4.  Bias correction for GC content, transposable elements, and DNA accessibility.
+
+5.  Unlike diffHic, HiCcompare, and multiHiCcompare, which focus on differential analysis, or HiCDCPlus, which balances interaction calling and differential analysis, HiCPotts prioritizes enriched interaction detection. Its bias correction and spatial modeling make it a powerful complement to existing tools, enhancing Bioconductor’s suite for 3D genome analysis. HiCPotts can be used for initial interaction detection, followed by diffHic or HiCcompare for differential studies, creating a comprehensive Hi-C analysis workflow.
+
 
 # Installation
 
@@ -97,7 +135,7 @@ data <- as.data.frame(data)
 head(data)
 ```
 
-In practice, you would use get_data() to load real Hi-C data:
+In practice, the `get_data()` function is used to load real Hi-C data from .cool, .mcool, or .hic files, similar to the HiCExperiment package. Both convert these files into structured outputs, but they differ in their results. HiCExperiment generates a HiCExperiment object that includes a contact matrix, genomic regions, metadata (e.g., resolution, chromosome), and pairwise interactions. In contrast, `get_data()` produces a data frame from the same file types, incorporating optional calculations (if available) to identify sources of experimental biases, such as GC content or DNA accessibility. 
 
 ```{r get_data, include=FALSE, eval=FALSE}
 # Example (not run)
@@ -117,7 +155,7 @@ data <- prepare_data(
 
 ## Step 2: Processing Data
 
-The `process_data()` function converts the data frame into a list of (N $\times$ N) matrices for interactions (`y`) and covariates (`x_vars`), optionally scaling interaction counts.
+The `process_data()` function converts the data frame generated through the `prepare_data()` function into a list of (N $\times$ N) matrices for interactions (`y`) and covariates (`x_vars`), optionally scaling interaction counts. Also, if a HiCExperiment object is already available and the sources of biases are known and organized in a separate data frame, these can be combined into a single data frame using base R functions and the `prepare_data()` function to convert into a list for analysis.
 
 ```{r process_data, include=FALSE, eval=TRUE}
 processed <- process_data(data, N = N, scale_max = 500, standardization_y = TRUE)
