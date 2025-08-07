@@ -75,7 +75,7 @@
 #' specified distribution and modeling assumptions.
 #'
 #' @examples
-#' #\donttest{
+#'
 #' # Example usage of posterior:
 #' N <- 5
 #' y <- rpois(N, lambda = 5)
@@ -104,8 +104,8 @@
 #'   dist = "Poisson",
 #'   size = NULL
 #' )
-#' print(post_val) # Display result
-#' #}
+#' #print(post_val) # Display result
+#' 
 #'
 #' @export
 #'
@@ -113,7 +113,6 @@ posterior_combined <- function(pred_combined, params, z, y, x_vars, component, t
                                use_data_priors, user_fixed_priors, dist, size) {
   # Validate inputs
   if (length(z[z == component]) == 0) {
-    # stop(paste("No data for component", component))
     stop(sprintf("Invalid component: %s", component))
   }
 
@@ -121,12 +120,10 @@ posterior_combined <- function(pred_combined, params, z, y, x_vars, component, t
   likelihood <- likelihood_combined(pred_combined, params, z, y, x_vars, component, theta, N,
     dist = dist, size = size
   )
-  # print(paste("Likelihood for component", component, ":", likelihood))
-
+  
   # Compute the prior for the parameters
   prior <- prior_combined(params, component, y, x_vars, z, use_data_priors, user_fixed_priors)
-  # print(paste("Prior for component", component, ":", prior))
-
+  
   # If dist is "NB" or "ZINB", add the size prior
   if (dist == "NB" || dist == "ZINB") {
     # Validate size and component
@@ -136,8 +133,7 @@ posterior_combined <- function(pred_combined, params, z, y, x_vars, component, t
 
     # Calculate the size prior
     size_prior_value <- size_prior(size, component)
-    # print(paste("Size Prior for component", component, ":", size_prior_value))
-
+    
     # Return the combined posterior
     return(likelihood + prior + size_prior_value)
   } else {

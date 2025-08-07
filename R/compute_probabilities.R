@@ -67,7 +67,7 @@
 #'
 #' @examples
 #' #
-#' #\donttest{
+#' #
 #' # Synthetic data
 #' set.seed(123)
 #' 
@@ -102,7 +102,7 @@
 #' print(result)
 #' # See vignette("HMRFHiC_vignette") for detailed examples with real Hi-C data.
 #' #
-#' #}
+#' #
 #'
 #' @seealso
 #' \code{\link{dpois}}, \code{\link{dnbinom}}, for probability calculations.
@@ -111,15 +111,7 @@
 #'
 compute_HMRFHiC_probabilities <- function(data, chain_betas, iterations, dist = "ZINB") {
   # Check for required columns in data
-  required_columns <- c("start", "end", "interactions", "GC", "TES", "ACC")
-  missing_columns <- setdiff(required_columns, names(data))
-  if (length(missing_columns) > 0) {
-    # stop("The following required columns are missing from the data: ", paste(missing_columns, collapse = ", "))
-    stop(
-      "The following required columns are missing in the data: ",
-      paste(missing_columns, collapse = ", ")
-    )
-  }
+  .check_required_columns(data)
 
   # Prepare mydata data frame
   mydata <- as.data.frame(cbind(data$start, data$end, data$interactions, data$GC, data$TES, data$ACC))
@@ -144,66 +136,58 @@ compute_HMRFHiC_probabilities <- function(data, chain_betas, iterations, dist = 
   overdisp_means <- list()
 
   # Loop over each chain to compute means after burn-in
-  for (i in seq_along(chain_betas)) {
-    # Extract each parameter's mean after burn-in for each chain
-    intercept_means[[i]] <- c(
-      mean(chain_betas[[i]][["chains"]][[1]][burnin:iterations, 1]),
-      mean(chain_betas[[i]][["chains"]][[2]][burnin:iterations, 1]),
-      mean(chain_betas[[i]][["chains"]][[3]][burnin:iterations, 1])
-    )
-    distance_means[[i]] <- c(
-      mean(chain_betas[[i]][["chains"]][[1]][burnin:iterations, 2]),
-      mean(chain_betas[[i]][["chains"]][[2]][burnin:iterations, 2]),
-      mean(chain_betas[[i]][["chains"]][[3]][burnin:iterations, 2])
-    )
-    GC_means[[i]] <- c(
-      mean(chain_betas[[i]][["chains"]][[1]][burnin:iterations, 3]),
-      mean(chain_betas[[i]][["chains"]][[2]][burnin:iterations, 3]),
-      mean(chain_betas[[i]][["chains"]][[3]][burnin:iterations, 3])
-    )
-    TES_means[[i]] <- c(
-      mean(chain_betas[[i]][["chains"]][[1]][burnin:iterations, 4]),
-      mean(chain_betas[[i]][["chains"]][[2]][burnin:iterations, 4]),
-      mean(chain_betas[[i]][["chains"]][[3]][burnin:iterations, 4])
-    )
-    ACC_means[[i]] <- c(
-      mean(chain_betas[[i]][["chains"]][[1]][burnin:iterations, 5]),
-      mean(chain_betas[[i]][["chains"]][[2]][burnin:iterations, 5]),
-      mean(chain_betas[[i]][["chains"]][[3]][burnin:iterations, 5])
-    )
-
-    # Calculate theta and overdispersion means conditionally
-    if (dist %in% c("ZIP", "ZINB")) {
-      theta_means[[i]] <- mean(chain_betas[[i]][["theta"]][burnin:iterations])
-    }
-    if (dist %in% c("NB", "ZINB")) {
-      overdisp_means[[i]] <- c(
-        mean(chain_betas[[i]][["size"]][1, burnin:iterations]),
-        mean(chain_betas[[i]][["size"]][2, burnin:iterations]),
-        mean(chain_betas[[i]][["size"]][3, burnin:iterations])
-      )
-    }
+  intercept_means <- lapply(chain_betas, function(chain) {
+    vapply(seq_len(3), function(j) mean(chain[["chains"]][[j]][burnin:iterations, 1, drop = FALSE]), numeric(1))
+  })
+  
+  distance_means <- lapply(chain_betas, function(chain) {
+    vapply(seq_len(3), function(j) mean(chain[["chains"]][[j]][burnin:iterations, 2, drop = FALSE]), numeric(1))
+  })
+  
+  GC_means <- lapply(chain_betas, function(chain) {
+    vapply(seq_len(3), function(j) mean(chain[["chains"]][[j]][burnin:iterations, 3, drop = FALSE]), numeric(1))
+  })
+  
+  TES_means <- lapply(chain_betas, function(chain) {
+    vapply(seq_len(3), function(j) mean(chain[["chains"]][[j]][burnin:iterations, 4, drop = FALSE]), numeric(1))
+  })
+  
+  ACC_means <- lapply(chain_betas, function(chain) {
+    vapply(seq_len(3), function(j) mean(chain[["chains"]][[j]][burnin:iterations, 5, drop = FALSE]), numeric(1))
+  })
+  
+  # Calculate theta and overdispersion means conditionally
+  if (dist %in% c("ZIP", "ZINB")) {
+    theta_means <- lapply(chain_betas, function(chain) {
+      mean(chain[["theta"]][burnin:iterations])
+    })
+  }
+  
+  if (dist %in% c("NB", "ZINB")) {
+    overdisp_means <- lapply(chain_betas, function(chain) {
+      vapply(seq_len(3), function(j) mean(chain[["size"]][j, burnin:iterations, drop = FALSE]), numeric(1))
+    })
   }
 
   # Aggregate means across chains
-  intercept_1 <- mean(sapply(intercept_means, `[[`, 1))
-  distance_1 <- mean(sapply(distance_means, `[[`, 1))
-  GC_1 <- mean(sapply(GC_means, `[[`, 1))
-  TES_1 <- mean(sapply(TES_means, `[[`, 1))
-  ACC_1 <- mean(sapply(ACC_means, `[[`, 1))
-
-  intercept_2 <- mean(sapply(intercept_means, `[[`, 2))
-  distance_2 <- mean(sapply(distance_means, `[[`, 2))
-  GC_2 <- mean(sapply(GC_means, `[[`, 2))
-  TES_2 <- mean(sapply(TES_means, `[[`, 2))
-  ACC_2 <- mean(sapply(ACC_means, `[[`, 2))
-
-  intercept_3 <- mean(sapply(intercept_means, `[[`, 3))
-  distance_3 <- mean(sapply(distance_means, `[[`, 3))
-  GC_3 <- mean(sapply(GC_means, `[[`, 3))
-  TES_3 <- mean(sapply(TES_means, `[[`, 3))
-  ACC_3 <- mean(sapply(ACC_means, `[[`, 3))
-
+  intercept_1 <- mean(vapply(intercept_means, `[[`, numeric(1), 1))
+  distance_1 <- mean(vapply(distance_means, `[[`, numeric(1), 1))
+  GC_1 <- mean(vapply(GC_means, `[[`, numeric(1), 1))
+  TES_1 <- mean(vapply(TES_means, `[[`, numeric(1), 1))
+  ACC_1 <- mean(vapply(ACC_means, `[[`, numeric(1), 1))
+  
+  intercept_2 <- mean(vapply(intercept_means, `[[`, numeric(1), 2))
+  distance_2 <- mean(vapply(distance_means, `[[`, numeric(1), 2))
+  GC_2 <- mean(vapply(GC_means, `[[`, numeric(1), 2))
+  TES_2 <- mean(vapply(TES_means, `[[`, numeric(1), 2))
+  ACC_2 <- mean(vapply(ACC_means, `[[`, numeric(1), 2))
+  
+  intercept_3 <- mean(vapply(intercept_means, `[[`, numeric(1), 3))
+  distance_3 <- mean(vapply(distance_means, `[[`, numeric(1), 3))
+  GC_3 <- mean(vapply(GC_means, `[[`, numeric(1), 3))
+  TES_3 <- mean(vapply(TES_means, `[[`, numeric(1), 3))
+  ACC_3 <- mean(vapply(ACC_means, `[[`, numeric(1), 3))
+  
   # Aggregate theta and overdispersion means
   if (dist %in% c("ZIP", "ZINB")) {
     theta <- mean(unlist(theta_means))
@@ -211,9 +195,9 @@ compute_HMRFHiC_probabilities <- function(data, chain_betas, iterations, dist = 
     theta <- NULL
   }
   if (dist %in% c("NB", "ZINB")) {
-    Overdisp_1 <- mean(sapply(overdisp_means, `[[`, 1))
-    Overdisp_2 <- mean(sapply(overdisp_means, `[[`, 2))
-    Overdisp_3 <- mean(sapply(overdisp_means, `[[`, 3))
+    Overdisp_1 <- mean(vapply(overdisp_means, `[[`, numeric(1), 1))
+    Overdisp_2 <- mean(vapply(overdisp_means, `[[`, numeric(1), 2))
+    Overdisp_3 <- mean(vapply(overdisp_means, `[[`, numeric(1), 3))
   } else {
     Overdisp_1 <- Overdisp_2 <- Overdisp_3 <- NULL
   }

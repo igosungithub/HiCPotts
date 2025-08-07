@@ -61,19 +61,23 @@ bin-pair it computes:
 }
 }
 \examples{
-\dontrun{
+wig <- system.file("extdata", "DNaseI_BG3_gr_chr4.bedGraph", package = "HiCPotts")
+chain <- system.file("extdata", "dm3ToDm6_chr4_only.chain", package = "HiCPotts")
+te <- system.file("extdata", "dm6_TEs_chr4.gtf", package = "HiCPotts")
+hic <- system.file("extdata", "BG3_WT_merged_hic_matrix_chr4_100Kb.cool", package = "HiCPotts")
+
 bb <- get_data(
-  file_path      = "C:/Users/name/Desktop/hicTransform.h5",
-  chr            = "chr2L",
+  file_path      = hic,
+  chr            = "chr4",
   start          = 1,
-  end            = 40000,
-  resolution     = 2000,
+  end            = 100000,
+  resolution     = 10000,
   genome_package = "BSgenome.Dmelanogaster.UCSC.dm6",
-  acc_wig        = "other/BG3.r2c.dhs.density.wig",
-  chain_file     = "dm3ToDm6.over.chain",
-  te_granges     = "dm6_TEs.gtf"
+  acc_wig        = wig,
+  chain_file     = chain,
+  te_granges     = te
 )
-}
+
 
 }
 \seealso{

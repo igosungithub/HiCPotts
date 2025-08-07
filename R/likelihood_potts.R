@@ -43,7 +43,7 @@
 #' that site/pair under the model parameterized by \code{x}.
 #'
 #' @examples
-#' #\donttest{
+#' 
 #' # Suppose we have an N=4 lattice and a vector x and pair_neighbours_DA_x1 of length 16
 #' N <- 4
 #' x <- rep(0.5, N * N) # interaction parameter repeated for each pair
@@ -51,8 +51,8 @@
 #'
 #' # Compute the Potts DA matrix
 #' potts_matrix <- likelihood_gamma(x, pair_neighbours_DA_x1, N)
-#' print(potts_matrix)
-#' #}
+#' #print(potts_matrix)
+#' 
 #'
 #' @export
 #'
@@ -61,22 +61,26 @@ likelihood_gamma <- function(x, pair_neighbours_DA_x1, N) {
   if (length(x) != length(pair_neighbours_DA_x1)) {
     stop("x and pair_neighbours_DA_x1 must have the same length.")
   }
-
+  if (!is.numeric(x) || length(x) == 0) {
+    stop("x must be a nonempty numeric vector.")
+  }
+  
   # Step 1: Calculate max value for numerical stability
   max_val <- max(x * pair_neighbours_DA_x1)
-
+  
   # Step 2: Calculate adjusted exponents
   exponent_diff <- x * pair_neighbours_DA_x1 - max_val
   exp_values <- exp(exponent_diff)
-
+  
   # Step 3: Sum the adjusted exponentiated values
   sum_exp_values <- sum(exp_values)
-
+  
   # Step 4: Calculate normalized probabilities
   a <- exp_values / sum_exp_values
-
+  
   # Step 5: Create Potts DA matrix using the normalized probabilities
   potts_DA <- matrix(a, nrow = N, ncol = N)
-
+  
   return(potts_DA)
 }
+

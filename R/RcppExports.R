@@ -50,7 +50,7 @@ run_metropolis_MCMC_betas <- function(N, gamma_prior, iterations, x_vars, y, use
 #' how many of the four neighbors match the state of that site.
 #'
 #' @examples
-#' \dontrun{
+#' 
 #' # Suppose we have a 5x5 Potts model lattice:
 #' potts_data <- matrix(sample(1:3, 25, replace = TRUE), ncol = 5)
 #' N <- 5
@@ -65,7 +65,7 @@ run_metropolis_MCMC_betas <- function(N, gamma_prior, iterations, x_vars, y, use
 #' # Evaluate neighbors for the proposed configuration:
 #' neigh_proposed <- Neighbours_combined(potts_data, N, proposed_value = proposed)
 #' neigh_proposed
-#' }
+#' 
 #' @keywords internal
 #'
 #' @export

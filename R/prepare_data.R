@@ -50,19 +50,23 @@
 #' }
 #'
 #' @examples
-#' \dontrun{
+#' wig <- system.file("extdata", "DNaseI_BG3_gr_chr4.bedGraph", package = "HiCPotts")
+#' chain <- system.file("extdata", "dm3ToDm6_chr4_only.chain", package = "HiCPotts")
+#' te <- system.file("extdata", "dm6_TEs_chr4.gtf", package = "HiCPotts")
+#' hic <- system.file("extdata", "BG3_WT_merged_hic_matrix_chr4_100Kb.cool", package = "HiCPotts")
+#'
 #' bb <- get_data(
-#'   file_path      = "C:/Users/name/Desktop/hicTransform.h5",
-#'   chr            = "chr2L",
+#'   file_path      = hic,
+#'   chr            = "chr4",
 #'   start          = 1,
-#'   end            = 40000,
-#'   resolution     = 2000,
+#'   end            = 100000,
+#'   resolution     = 10000,
 #'   genome_package = "BSgenome.Dmelanogaster.UCSC.dm6",
-#'   acc_wig        = "other/BG3.r2c.dhs.density.wig",
-#'   chain_file     = "dm3ToDm6.over.chain",
-#'   te_granges     = "dm6_TEs.gtf"
+#'   acc_wig        = wig,
+#'   chain_file     = chain,
+#'   te_granges     = te
 #' )
-#' }
+#' 
 #'
 #' @seealso
 #' \code{\link[strawr]{straw}}, \code{\link[rhdf5]{h5read}}, \code{\link[rtracklayer]{liftOver}}
@@ -75,6 +79,7 @@
 #' @importFrom utils read.table
 #' @importFrom stats aggregate
 #' @importFrom rhdf5 h5ls h5read
+#' @importFrom S4Vectors queryHits
 #' @export
 get_data <- function(file_path, chr, start, end, resolution,
                      genome_package = NULL,
@@ -115,7 +120,7 @@ get_data <- function(file_path, chr, start, end, resolution,
   ## 1) Import DNase-I (ACC) and liftOver if provided
   acc_gr <- NULL
   if (!is.null(acc_wig) && !is.null(chain_file)) {
-    dnase_df <- utils::read.table(acc_wig,
+    dnase_df <- read.table(acc_wig,
       header = FALSE, skip = 1,
       col.names = c("chr", "start", "end", "score"),
       stringsAsFactors = FALSE
@@ -123,44 +128,44 @@ get_data <- function(file_path, chr, start, end, resolution,
     if (!grepl("^chr", dnase_df$chr[1])) {
       dnase_df$chr <- paste0("chr", dnase_df$chr)
     }
-    acc_gr <- GenomicRanges::GRanges(dnase_df$chr,
-      IRanges::IRanges(dnase_df$start + 1, dnase_df$end),
+    acc_gr <- GRanges(dnase_df$chr,
+      IRanges(dnase_df$start + 1, dnase_df$end),
       score = as.numeric(dnase_df$score)
     )
-    chain <- rtracklayer::import.chain(chain_file)
-    acc_gr <- unlist(rtracklayer::liftOver(acc_gr, chain))
-    acc_gr <- acc_gr[GenomicRanges::seqnames(acc_gr) == chr]
+    chain <- import.chain(chain_file)
+    acc_gr <- unlist(liftOver(acc_gr, chain))
+    acc_gr <- acc_gr[seqnames(acc_gr) == chr]
   }
 
   ## 2) Import TE ranges if provided
   te_in <- NULL
   if (!is.null(te_granges)) {
     if (is.character(te_granges)) {
-      te_in <- rtracklayer::import(te_granges)
+      te_in <- import(te_granges)
     } else if (inherits(te_granges, "GRanges")) {
       te_in <- te_granges
     } else {
       stop("`te_granges` must be a file path or a GRanges object")
     }
-    te_in <- te_in[GenomicRanges::seqnames(te_in) == chr]
+    te_in <- te_in[seqnames(te_in) == chr]
   }
 
   ## 3) Detect .h5 schema and read raw interactions
-  hc <- rhdf5::h5ls(file_path)
+  hc <- h5ls(file_path)
   has_bins <- any(hc$group == "/" & hc$name == "bins")
   has_intervals <- any(hc$group == "/" & hc$name == "intervals")
 
   read_cool <- function(fp, ch) {
-    codes_raw <- rhdf5::h5read(fp, "bins/chrom")
-    names_map <- rhdf5::h5read(fp, "chroms/name")
+    codes_raw <- h5read(fp, "bins/chrom")
+    names_map <- h5read(fp, "chroms/name")
     if (is.factor(codes_raw)) {
       cl <- as.character(codes_raw)
       bin_chrom <- if (all(cl %in% names_map)) paste0("chr", cl) else cl
     } else {
       bin_chrom <- paste0("chr", names_map[codes_raw + 1])
     }
-    bin_start <- rhdf5::h5read(fp, "bins/start") + 1
-    bin_end <- rhdf5::h5read(fp, "bins/end")
+    bin_start <- h5read(fp, "bins/start") + 1
+    bin_end <- h5read(fp, "bins/end")
     bins_tbl <- data.frame(
       bin_id = seq_along(bin_chrom) - 1,
       chrom = bin_chrom,
@@ -169,9 +174,9 @@ get_data <- function(file_path, chr, start, end, resolution,
       stringsAsFactors = FALSE
     )
     px <- data.frame(
-      bin1_id = rhdf5::h5read(fp, "pixels/bin1_id"),
-      bin2_id = rhdf5::h5read(fp, "pixels/bin2_id"),
-      count = rhdf5::h5read(fp, "pixels/count"),
+      bin1_id = h5read(fp, "pixels/bin1_id"),
+      bin2_id = h5read(fp, "pixels/bin2_id"),
+      count = h5read(fp, "pixels/count"),
       stringsAsFactors = FALSE
     )
     df1 <- merge(px, bins_tbl, by.x = "bin1_id", by.y = "bin_id", sort = FALSE)
@@ -182,7 +187,7 @@ get_data <- function(file_path, chr, start, end, resolution,
   }
 
   read_interval <- function(fp, ch) {
-    ints <- rhdf5::h5read(fp, "intervals")
+    ints <- h5read(fp, "intervals")
     ints$start_list <- ints$start_list + 1
     bins_tbl <- data.frame(
       bin_id = seq_along(ints$start_list) - 1,
@@ -191,7 +196,7 @@ get_data <- function(file_path, chr, start, end, resolution,
       end = ints$end_list,
       stringsAsFactors = FALSE
     )
-    dat <- rhdf5::h5read(fp, "matrix")
+    dat <- h5read(fp, "matrix")
     rows <- rep(seq_len(dat$shape[1]) - 1, diff(dat$indptr))
     px <- data.frame(
       bin1_id = rows,
@@ -237,7 +242,7 @@ get_data <- function(file_path, chr, start, end, resolution,
       obs_df$new_e1 <- obs_df$new_s1 + resolution - 1
       obs_df$new_s2 <- floor((obs_df$bin2_start - 1) / resolution) * resolution + 1
       obs_df$new_e2 <- obs_df$new_s2 + resolution - 1
-      agg <- stats::aggregate(count ~ new_s1 + new_e1 + new_s2 + new_e2,
+      agg <- aggregate(count ~ new_s1 + new_e1 + new_s2 + new_e2,
         data = obs_df, FUN = sum
       )
       obs_df <- data.frame(
@@ -298,10 +303,10 @@ get_data <- function(file_path, chr, start, end, resolution,
   if (has_genome) {
     full$GC <- mapply(
       function(s1, e1, s2, e2) {
-        seq1 <- Biostrings::getSeq(genome, chr, s1, e1)
-        seq2 <- Biostrings::getSeq(genome, chr, s2, e2)
-        dna <- Biostrings::DNAString(paste0(as.character(seq1), as.character(seq2)))
-        mean(Biostrings::letterFrequency(dna, c("G", "C"), as.prob = TRUE))
+        seq1 <- getSeq(genome, chr, s1, e1)
+        seq2 <- getSeq(genome, chr, s2, e2)
+        dna <- DNAString(paste0(as.character(seq1), as.character(seq2)))
+        mean(letterFrequency(dna, c("G", "C"), as.prob = TRUE))
       },
       full$bin1_start, full$bin1_end,
       full$bin2_start, full$bin2_end
@@ -316,12 +321,12 @@ get_data <- function(file_path, chr, start, end, resolution,
   } else {
     mapply(
       function(s1, e1, s2, e2) {
-        g1 <- GenomicRanges::GRanges(chr, IRanges::IRanges(s1, e1))
-        g2 <- GenomicRanges::GRanges(chr, IRanges::IRanges(s2, e2))
-        hits1 <- GenomicRanges::findOverlaps(acc_gr, g1)
-        hits2 <- GenomicRanges::findOverlaps(acc_gr, g2)
-        m1 <- if (length(hits1) > 0) mean(acc_gr$score[S4Vectors::queryHits(hits1)], na.rm = TRUE) else NA_real_
-        m2 <- if (length(hits2) > 0) mean(acc_gr$score[S4Vectors::queryHits(hits2)], na.rm = TRUE) else NA_real_
+        g1 <- GRanges(chr, IRanges(s1, e1))
+        g2 <- GRanges(chr, IRanges(s2, e2))
+        hits1 <- findOverlaps(acc_gr, g1)
+        hits2 <- findOverlaps(acc_gr, g2)
+        m1 <- if (length(hits1) > 0) mean(acc_gr$score[queryHits(hits1)], na.rm = TRUE) else NA_real_
+        m2 <- if (length(hits2) > 0) mean(acc_gr$score[queryHits(hits2)], na.rm = TRUE) else NA_real_
         mean(c(m1, m2), na.rm = TRUE)
       },
       full$bin1_start, full$bin1_end,
@@ -335,9 +340,9 @@ get_data <- function(file_path, chr, start, end, resolution,
   } else {
     mapply(
       function(s1, e1, s2, e2) {
-        g1 <- GenomicRanges::GRanges(chr, IRanges::IRanges(s1, e1))
-        g2 <- GenomicRanges::GRanges(chr, IRanges::IRanges(s2, e2))
-        sum(GenomicRanges::countOverlaps(g1, te_in)) + sum(GenomicRanges::countOverlaps(g2, te_in))
+        g1 <- GRanges(chr, IRanges(s1, e1))
+        g2 <- GRanges(chr, IRanges(s2, e2))
+        sum(countOverlaps(g1, te_in)) + sum(countOverlaps(g2, te_in))
       },
       full$bin1_start, full$bin1_end,
       full$bin2_start, full$bin2_end

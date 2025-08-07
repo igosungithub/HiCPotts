@@ -82,29 +82,29 @@ df <- data.frame(
   ACC = runif(100, 0, 1)
 )
 processed <- process_data(df, N = 10, scale_max = 500, standardization_y = TRUE)
-x_vars <- processed$x_vars
-y_matrices <- processed$y
-str(x_vars) # Show structure of covariates
-str(y_matrices) # Show structure of interaction matrices
+#x_vars <- processed$x_vars
+#y_matrices <- processed$y
+#str(x_vars) # Show structure of covariates
+#str(y_matrices) # Show structure of interaction matrices
 
-#\donttest{
+
 # Extended example with larger dataset
 # Suppose we have a data frame 'large_df' corresponding to a 20x20 interaction matrix
-large_df <- data.frame(
-  start = rep(1:20, each = 20),
-  end = rep(21:40, times = 20),
-  interactions = rpois(400, 5),
-  GC = runif(400, 0, 1),
-  TES = runif(400, 0, 1),
-  ACC = runif(400, 0, 1)
-)
-processed <- process_data(large_df, N = 20, scale_max = 500, standardization_y = TRUE)
-x_vars <- processed[[1]]
-y_matrices <- processed[[2]]
-str(x_vars)
-str(y_matrices)
+#large_df <- data.frame(
+#  start = rep(1:20, each = 20),
+#  end = rep(21:40, times = 20),
+#  interactions = rpois(400, 5),
+#  GC = runif(400, 0, 1),
+#  TES = runif(400, 0, 1),
+#  ACC = runif(400, 0, 1)
+#)
+#processed <- process_data(large_df, N = 20, scale_max = 500, standardization_y = TRUE)
+#x_vars <- processed[[1]]
+#y_matrices <- processed[[2]]
+#str(x_vars)
+#str(y_matrices)
 # See vignette("HMRFHiC_vignette") for detailed examples with real Hi-C data.
-#}
+#
 
 }
 \seealso{

@@ -20,15 +20,27 @@
 #' from the specified Beta distribution.
 #'
 #' @examples
-#' #\donttest{
+#' #
 #' # Generate a single prior value for the Potts model interaction parameter
 #' prior_val <- gamma_prior_value()
-#' prior_val
-#' #
-#' #}
+#' #prior_val
+#' 
+#' 
 #'
 #' @export
 #
 gamma_prior_value <- function() {
-  rbeta(1, 10, 5)
+  # draw
+  value <- rbeta(1, 10, 5)
+  
+  # sanity‐check output
+  stopifnot(
+    is.numeric(value),
+    length(value) == 1,
+    is.finite(value),
+    value >= 0,
+    value <= 1
+  )
+  
+  value
 }

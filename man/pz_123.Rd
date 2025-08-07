@@ -116,7 +116,7 @@ using \eqn{\exp(\gamma \times} (\code{sum_neighbours})), and returned as log-pos
    dist = dist
  )
 
-print(pz_vals)
+#print(pz_vals)
 #}
 
 }

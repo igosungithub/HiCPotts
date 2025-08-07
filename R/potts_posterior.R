@@ -112,7 +112,7 @@
 #'    dist = dist
 #'  )
 #' 
-#' print(pz_vals)
+#' #print(pz_vals)
 #' #}
 #'
 #' @useDynLib HMRFHiC, .registration=TRUE

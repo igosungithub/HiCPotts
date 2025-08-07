@@ -76,7 +76,7 @@ pred_combined <- function(params, z, x_vars, component, N) {
   if (!is.list(x_vars) || length(x_vars) != 4) {
     stop("x_vars must be a list of four matrices")
   }
-  if (any(sapply(x_vars, function(x) !is.matrix(x[[1]]) || dim(x[[1]])[1] != N || dim(x[[1]])[2] != N))) {
+  if (any(vapply(x_vars, function(x) !is.matrix(x[[1]]) || dim(x[[1]])[1] != N || dim(x[[1]])[2] != N, logical(1)))) {
     stop("Each x_vars matrix must have dimensions N x N")
   }
 
