@@ -67,7 +67,7 @@
 #' It returns a numeric vector of likelihood contributions for each observation.
 #'
 #' @examples
-#' #\donttest{
+#' 
 #' # Example setup
 #' N <- 3
 #' z <- matrix(c(1, 1, 2, 3, 1, 2, 3, 1, 2), nrow = 3, byrow = TRUE)
@@ -97,9 +97,9 @@
 #'   dist = "Poisson"
 #' )
 #'
-#' print(sum(ll_values)) # sum of likelihood contributions
+#' #print(sum(ll_values)) # sum of likelihood contributions
 #'
-#' #}
+#'
 #'
 #' @seealso
 #' \code{\link{dpois}}, \code{\link{dnbinom}} for related probability mass functions.

@@ -65,7 +65,7 @@
 #' }
 #' The \code{params} list bundles all necessary parameters, which are passed to the C++ function
 #' \code{_HMRFHiC_potts_posterior}. Probabilities are computed for each site, adjusted by neighbor effects
-#' using \eqn{\exp(\gamma \times \text{sum_neighbours})}, and returned as log-posteriors.
+#' using \eqn{\exp(\gamma \times} (\code{sum_neighbours})), and returned as log-posteriors.
 #'
 #' @return
 #' A numeric \eqn{N \times N} matrix of log-posterior probabilities for each site for the specified component.
@@ -112,7 +112,7 @@
 #'    dist = dist
 #'  )
 #' 
-#' print(pz_vals)
+#' #print(pz_vals)
 #' #}
 #'
 #' @useDynLib HMRFHiC, .registration=TRUE

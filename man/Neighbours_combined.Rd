@@ -46,7 +46,7 @@ MCMC algorithm where new configurations are proposed and evaluated
 based on their local coherence.
 }
 \examples{
-\dontrun{
+
 # Suppose we have a 5x5 Potts model lattice:
 potts_data <- matrix(sample(1:3, 25, replace = TRUE), ncol = 5)
 N <- 5
@@ -61,6 +61,6 @@ proposed <- matrix(sample(1:3, 25, replace = TRUE), ncol = 5)
 # Evaluate neighbors for the proposed configuration:
 neigh_proposed <- Neighbours_combined(potts_data, N, proposed_value = proposed)
 neigh_proposed
-}
+
 }
 \keyword{internal}

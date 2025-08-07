@@ -21,14 +21,27 @@
 #' for the interaction parameter in the Potts model.
 #'
 #' @examples
-#' #\donttest{
+#' 
 #' # Generate a proposal value for the Potts model interaction parameter
 #' proposed_val <- proposalfunction()
-#' proposed_val
-#' #}
+#' #proposed_val
+#' 
 #'
 #' @export
 #'
 proposalfunction <- function() {
-  rbeta(1, 10, 5) # Assuming component 1's settings are relevant here
+  # draw proposal
+  value <- rbeta(1, 10, 5)
+  
+  # quick sanity‐check
+  stopifnot(
+    is.numeric(value),
+    length(value) == 1,
+    is.finite(value),
+    value >= 0,
+    value <= 1
+  )
+  
+  value
 }
+

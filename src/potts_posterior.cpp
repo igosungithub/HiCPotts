@@ -88,7 +88,7 @@ List get_indices(const NumericMatrix &z, int comp) {
 // #'
 // #' The \code{pred_combined} function is called to obtain linear predictors \eqn{\lambda} for each component. 
 // #' Probabilities are computed for each observation under the chosen distribution and adjusted by the Potts model 
-// #' neighbor effect using \eqn{\exp(\gamma \times \text{sum_neighbours})}.
+// #' neighbor effect using \eqn{$\exp(\gamma \times \text{sum_neighbours})$}.
 // #'
 // #' Finally, the probabilities are logged and returned as an \eqn{N \times N} matrix of log-posteriors.
 // #'

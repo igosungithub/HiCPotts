@@ -105,11 +105,11 @@ By passing a list of count matrices through \code{y}, users can run multiple ind
 facilitating simulation studies, sensitivity analyses, or other large-scale inference tasks.
 }
 \examples{
-#\donttest{
+#
 # Suppose we have multiple simulated Hi-C data sets:
-N <- 10
+N <- 5
 y <- list(
-  matrix(rpois(100, lambda = 5), nrow = N)
+  matrix(rpois((N*N), lambda = 5), nrow = N)
 )
 
 
@@ -142,7 +142,27 @@ results <- run_chain_betas(
 )
 print(results)
 # Each element of 'results' corresponds to the output of run_metropolis_MCMC_betas for each dataset
+#
+
+#/donttest{
+
+user_fixed_priors <- list(
+ component1 = list(
+   meany = 3, meanx1 = 5, meanx2 = 0.2, meanx3 = 0, meanx4 = 4,
+   sdy = 1, sdx1 = 0.01, sdx2 = 0.01, sdx3 = 0.002, sdx4 = 0.005
+ ),
+ component2 = list(
+   meany = 300, meanx1 = 8, meanx2 = 0.3, meanx3 = 3, meanx4 = 8,
+   sdy = 0.1, sdx1 = 0.1, sdx2 = 0.01, sdx3 = 0.02, sdx4 = 0.02
+ ),
+ component3 = list(
+   meany = 200, meanx1 = 10, meanx2 = 0.3, meanx3 = 1.6, meanx4 = 4.5,
+   sdy = 0.1, sdx1 = 0.6, sdx2 = 0.1, sdx3 = 0.2, sdx4 = 0.2
+ )
+ )
+
 #}
+
 
 }
 \seealso{

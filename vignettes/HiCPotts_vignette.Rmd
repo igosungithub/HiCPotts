@@ -2,7 +2,10 @@
 title: "Bayesian Analysis of Hi-C Interactions with HiCPotts"
 author: "Itunu Godwin Osuntoki, Nicolae Radu Zabet"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output:   
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 2
 vignette: >
   %\VignetteIndexEntry{Bayesian Analysis of Hi-C Interactions with HiCPotts}
   %\VignetteEngine{knitr::rmarkdown}
@@ -66,7 +69,8 @@ Install them as follows:
 Install CRAN dependencies
 
 
-```{r setup-global, include=FALSE}
+```{r setup, include=FALSE}
+library(BiocStyle)
 knitr::opts_chunk$set(eval = TRUE, echo = TRUE, collapse = TRUE)
 ```
 
@@ -135,7 +139,7 @@ data <- as.data.frame(data)
 head(data)
 ```
 
-In practice, the `get_data()` function is used to load real Hi-C data from .cool, .mcool, or .hic files, similar to the HiCExperiment package. Both convert these files into structured outputs, but they differ in their results. HiCExperiment generates a HiCExperiment object that includes a contact matrix, genomic regions, metadata (e.g., resolution, chromosome), and pairwise interactions. In contrast, `get_data()` produces a data frame from the same file types, incorporating optional calculations (if available) to identify sources of experimental biases, such as GC content or DNA accessibility. 
+In practice, the `get_data()` function is used to load real Hi-C data from .cool, .mcool, or .hic files, similar to the HiCExperiment package. Both convert these files into structured outputs, but they differ in their results. HiCExperiment generates a HiCExperiment object that includes a contact matrix, genomic regions, metadata (e.g., resolution, chromosome), and pairwise interactions. In contrast, `get_data()` produces a data frame from the same file types, incorporating optional calculations (if available) to identify sources of experimental biases, such as GC content or DNA accessibility. Also the function support loading profiles as bigwig or bedgraph and will be imported as GRanges.
 
 ```{r get_data, include=FALSE, eval=FALSE}
 # Example (not run)
@@ -320,6 +324,11 @@ Utility Functions: The following functions, `proposaldensity_combined()`, `likel
 # Conclusion
 
 The HiCPotts package offers a powerful tool for Bayesian analysis of Hi-C data, integrating spatial dependencies, information from sources of bias associated with Hi-C data, and flexible mixture models. This page covered the core workflow, but the package’s functions can be customized for specific research needs, such as different genomic regions or distribution assumptions.
+
+Users trying to bring in extra covariates; beyond genomic distance, GC content, ACC-score and TEs, can do so by classifying each new factor according to how it relates to those four (for example, as a distance-like term, a sequence-composition term, or an interaction‐score term) 
+and then inputting it into the same model framework.
+Also, the package currently supports only intrachromosomal analyses. In the future, we plan to extend to interchromosomal contacts.
+
 
 For further details, consult the package documentation (`?HiCPotts`) or contact the package maintainers. We hope HiCPotts facilitates your genomic research!
 

@@ -71,7 +71,7 @@ The computed probabilities can be used for downstream analysis, such as segmenti
 }
 \examples{
 #
-#\donttest{
+#
 # Synthetic data
 set.seed(123)
 
@@ -106,7 +106,7 @@ result <- compute_HMRFHiC_probabilities(
 print(result)
 # See vignette("HMRFHiC_vignette") for detailed examples with real Hi-C data.
 #
-#}
+#
 
 }
 \seealso{

@@ -72,7 +72,7 @@ While end-users might not call it directly, it enables flexible specification of
 model components for complex hierarchical models.
 }
 \examples{
-#\donttest{
+
 # Example setup
 N <- 3
 z <- matrix(c(1, 1, 2, 3, 1, 2, 3, 1, 2), nrow = 3, byrow = TRUE)
@@ -102,9 +102,9 @@ ll_values <- likelihood_combined(
   dist = "Poisson"
 )
 
-print(sum(ll_values)) # sum of likelihood contributions
+#print(sum(ll_values)) # sum of likelihood contributions
 
-#}
+
 
 }
 \seealso{

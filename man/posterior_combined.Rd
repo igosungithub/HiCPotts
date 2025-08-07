@@ -79,7 +79,7 @@ By combining the likelihood and priors, the function returns the posterior value
 the Bayesian inference and MCMC steps to update parameters and perform parameters estimations.
 }
 \examples{
-#\donttest{
+
 # Example usage of posterior:
 N <- 5
 y <- rpois(N, lambda = 5)
@@ -108,7 +108,7 @@ post_val <- posterior_combined(
   dist = "Poisson",
   size = NULL
 )
-print(post_val) # Display result
-#}
+#print(post_val) # Display result
+
 
 }

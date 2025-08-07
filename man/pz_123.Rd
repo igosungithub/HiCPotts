@@ -72,7 +72,7 @@ under the Potts model. The model accounts for:
 }
 The \code{params} list bundles all necessary parameters, which are passed to the C++ function
 \code{_HMRFHiC_potts_posterior}. Probabilities are computed for each site, adjusted by neighbor effects
-using \eqn{\exp(\gamma \times \text{sum_neighbours})}, and returned as log-posteriors.
+using \eqn{\exp(\gamma \times} (\code{sum_neighbours})), and returned as log-posteriors.
 }
 \examples{
 #\donttest{
@@ -116,7 +116,7 @@ using \eqn{\exp(\gamma \times \text{sum_neighbours})}, and returned as log-poste
    dist = dist
  )
 
-print(pz_vals)
+#print(pz_vals)
 #}
 
 }
