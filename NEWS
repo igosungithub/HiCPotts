@@ -1,4 +1,6 @@
-Changes in version 0.99.5 (2025-08-07):
+Changes in version 0.99.6 (2025-08-11):
+- Updated the Description file
+- Accepted and made changes based on the reviewer's feedback.
 - Initial release of HiCPotts.
 - Added core functions: get_data(), process_data(), run_chain_betas(), compute_HMRFHiC_probabilities().
 - Supported distributions: Poisson, Zero-Inflated Poisson, Negative Binomial, Zero-Inflated Negative Binomial.
