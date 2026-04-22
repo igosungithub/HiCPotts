@@ -73,28 +73,31 @@ pred_combined <- function(params, z, x_vars, component, N) {
   if (is.null(x_vars)) {
     stop("x_vars cannot be NULL")
   }
-  if (!is.list(x_vars) || length(x_vars) != 4) {
+  if (!is.list(x_vars) || length(x_vars) != 4L) {
     stop("x_vars must be a list of four matrices")
   }
-  if (any(vapply(x_vars, function(x) !is.matrix(x[[1]]) || dim(x[[1]])[1] != N || dim(x[[1]])[2] != N, logical(1)))) {
-    stop("Each x_vars matrix must have dimensions N x N")
+  
+  if (length(params) != 5L){
+    stop("params must be a numeric vector of length 5")
   }
-
-  # Extract parameters
-  a <- params[1]
-  b <- params[2]
-  c <- params[3]
-  d <- params[4]
-  e <- params[5]
-
-  # Create logical mask and subset matrices
-  logical_mask <- z == component
-  x1_sub <- x_vars[[1]][[1]][logical_mask]
-  x2_sub <- x_vars[[2]][[1]][logical_mask]
-  x3_sub <- x_vars[[3]][[1]][logical_mask]
-  x4_sub <- x_vars[[4]][[1]][logical_mask]
-
-  # Compute pred for any component
-  pred <- a + b * log(x1_sub + 1) + c * log(x2_sub + 1) + d * log(x3_sub + 1) + e * log(x4_sub + 1)
-  return(pred)
+  bad <- vapply(x_vars, function(x) {
+    if (!is.list(x) || length(x) < 1L) return(TRUE)
+    m <- x[[1]]
+    !is.matrix(m) || nrow(m) != N || ncol(m) != N
+  }, logical(1))
+  if (any(bad))
+    stop("Each x_vars[[k]][[1]] must be an N x N matrix")
+  
+  mask <- z == component
+  if (!any(mask))
+    return(numeric(0L))                  # empty component: caller must handle
+  
+  a <- params[1]; b <- params[2]; cc <- params[3]; d <- params[4]; e <- params[5]
+  
+  x1 <- x_vars[[1]][[1]][mask]
+  x2 <- x_vars[[2]][[1]][mask]
+  x3 <- x_vars[[3]][[1]][mask]
+  x4 <- x_vars[[4]][[1]][mask]
+  
+  a + b * log1p(x1) + cc * log1p(x2) + d * log1p(x3) + e * log1p(x4)
 }

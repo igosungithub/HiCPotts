@@ -7,7 +7,7 @@
 proposalfunction()
 }
 \value{
-A numeric value between 0 and 1, drawn from a Beta(10, 5) distribution, serving as a proposal value
+A numeric value between 0 and 1, drawn from a Beta(2, 2) distribution, serving as a proposal value
 for the interaction parameter in the Potts model.
 }
 \description{
@@ -18,7 +18,7 @@ framework to propose new candidate values for the interaction parameter at each 
 \details{
 The Potts model describes configurations of states on a lattice, and the interaction parameter
 influences how neighboring sites align. An MCMC algorithm typically requires a proposal distribution
-to generate new candidate values for parameters. Here, the function draws from a \code{Beta(10,5)}
+to generate new candidate values for parameters. Here, the function draws from a \code{Beta(2,2)}
 distribution, which, similar to the prior example, draws the proposals towards the higher end of the
 \[0,1\] interval.
 }

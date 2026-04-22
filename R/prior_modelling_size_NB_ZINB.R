@@ -39,14 +39,11 @@
 #'
 # Gamma prior for size parameters
 size_prior <- function(size_value, component) {
-  if (component < 1 || component > 3) {
+  if (!is.numeric(size_value) || length(size_value) != 1L || !is.finite(size_value) ||
+      size_value <= 0)
+    stop("size_value must be a positive, finite numeric scalar.")
+  if (!component %in% 1:3)
     stop("Invalid component specified. Must be 1, 2, or 3.")
-  }
-
-  # Define parameters for each component
   shape_params <- c(7.5, 2, 5)
-  rate_param <- 1
-
-  # Compute log-probability using the appropriate shape parameter
-  dgamma(size_value, shape = shape_params[component], rate = rate_param, log = TRUE)
+  stats::dgamma(size_value, shape = shape_params[component], rate = 1, log = TRUE)
 }

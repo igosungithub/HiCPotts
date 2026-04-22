@@ -1,118 +1,74 @@
-test_that("prior_combined calculates correct priors with data-driven priors for component 1", {
-  # Mock data
-  params <- c(5, 1, 2, 0, 1)
-  component <- 1
-  y <- rnorm(25)
-  x_vars <- list(
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5))
-  )
-  z <- sample(1:3, 25, replace = TRUE)
-  use_data_priors <- TRUE
-  user_fixed_priors <- NULL
-
-  # Call the function
-  result <- prior_combined(params, component, y, x_vars, z, use_data_priors, user_fixed_priors)
-
-  # Validate result is numeric
-  expect_type(result, "double")
+test_that("prior_combined is DETERMINISTIC (regression test)", {
+  set.seed(4291)
+  N <- 4
+  y      <- rpois(N * N, 5)
+  x_vars <- replicate(4, list(matrix(runif(N * N), N, N)), simplify = FALSE)
+  z      <- sample(1:3, N * N, replace = TRUE)
+  params <- c(1, 0.2, -0.1, 0.3, 0.05)
+  
+  v1 <- prior_combined(params, 1, y, x_vars, z, TRUE, NULL)
+  v2 <- prior_combined(params, 1, y, x_vars, z, TRUE, NULL)
+  v3 <- prior_combined(params, 1, y, x_vars, z, TRUE, NULL)
+  expect_identical(v1, v2)
+  expect_identical(v1, v3)
+  expect_true(is.finite(v1))
 })
 
-test_that("prior_combined calculates correct priors with fixed priors for component 2", {
-  # Mock data
-  params <- c(3, 2, 4, 5, 1)
-  component <- 2
-  y <- rnorm(25)
-  x_vars <- list(
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5))
+test_that("prior_combined with user_fixed_priors equals sum(dnorm(..., log=TRUE))", {
+  params <- c(1, 2, 3, 4, 5)
+  upri <- list(
+    component1 = list(meany = 0, meanx1 = 0, meanx2 = 0, meanx3 = 0, meanx4 = 0,
+                      sdy   = 1, sdx1   = 1, sdx2   = 1, sdx3   = 1, sdx4   = 1),
+    component2 = list(meany = 1, meanx1 = 2, meanx2 = 3, meanx3 = 4, meanx4 = 5,
+                      sdy   = 2, sdx1   = 2, sdx2   = 2, sdx3   = 2, sdx4   = 2),
+    component3 = list(meany = 0, meanx1 = 0, meanx2 = 0, meanx3 = 0, meanx4 = 0,
+                      sdy   = 1, sdx1   = 1, sdx2   = 1, sdx3   = 1, sdx4   = 1)
   )
-  z <- sample(1:3, 25, replace = TRUE)
-  use_data_priors <- FALSE
-  user_fixed_priors <- list(
-    component1 = list(meany = 5, meanx1 = 1, meanx2 = 2, meanx3 = 3, meanx4 = 4, sdy = 1, sdx1 = 1, sdx2 = 1, sdx3 = 1, sdx4 = 1),
-    component2 = list(meany = 700, meanx1 = 2, meanx2 = 3, meanx3 = 4, meanx4 = 5, sdy = 2, sdx1 = 2, sdx2 = 2, sdx3 = 2, sdx4 = 2),
-    component3 = list(meany = 10, meanx1 = 3, meanx2 = 4, meanx3 = 5, meanx4 = 6, sdy = 3, sdx1 = 3, sdx2 = 3, sdx3 = 3, sdx4 = 3)
-  )
-
-  # Call the function
-  result <- prior_combined(params, component, y, x_vars, z, use_data_priors, user_fixed_priors)
-
-  # Validate result is numeric
-  expect_type(result, "double")
+  expected <- with(upri$component2,
+                   dnorm(1, meany, sdy, log = TRUE) +
+                     dnorm(2, meanx1, sdx1, log = TRUE) +
+                     dnorm(3, meanx2, sdx2, log = TRUE) +
+                     dnorm(4, meanx3, sdx3, log = TRUE) +
+                     dnorm(5, meanx4, sdx4, log = TRUE))
+  
+  N <- 3
+  y      <- rep(0, N * N)
+  x_vars <- replicate(4, list(matrix(0, N, N)), simplify = FALSE)
+  z      <- rep(2L, N * N)
+  
+  got <- prior_combined(params, 2, y, x_vars, z, FALSE, upri)
+  expect_equal(got, expected, tolerance = 1e-12)
 })
 
-test_that("prior_combined throws an error for invalid component", {
-  # Mock data
-  params <- c(5, 1, 2, 0, 1)
-  component <- 4
-  y <- rnorm(25)
-  x_vars <- list(
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5))
-  )
-  z <- sample(1:3, 25, replace = TRUE)
-  use_data_priors <- FALSE
-  user_fixed_priors <- list(
-    component1 = list(meany = 5, meanx1 = 1, meanx2 = 2, meanx3 = 3, meanx4 = 4, sdy = 1, sdx1 = 1, sdx2 = 1, sdx3 = 1, sdx4 = 1)
-  )
-
-  # Expect error
+test_that("Missing user_fixed_priors component raises an informative error", {
+  params <- rep(0, 5)
+  N <- 2
+  y <- rep(0, N * N)
+  x_vars <- replicate(4, list(matrix(0, N, N)), simplify = FALSE)
+  z <- rep(1L, N * N)
+  
   expect_error(
-    prior_combined(params, component, y, x_vars, z, use_data_priors, user_fixed_priors),
-    "Invalid component specified"
+    prior_combined(params, 2, y, x_vars, z, FALSE, user_fixed_priors = NULL),
+    "user_fixed_priors"
+  )
+  
+  upri <- list(component1 = list(
+    meany = 0, meanx1 = 0, meanx2 = 0, meanx3 = 0, meanx4 = 0,
+    sdy = 1, sdx1 = 1, sdx2 = 1, sdx3 = 1, sdx4 = 1
+  ))
+  expect_error(
+    prior_combined(params, 2, y, x_vars, z, FALSE, upri),
+    "component2"
   )
 })
 
-test_that("prior_combined handles small standard deviations correctly", {
-  # Mock data
-  params <- c(5, 1, 2, 0, 1)
-  component <- 1
-  y <- rnorm(25)
-  x_vars <- list(
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5))
-  )
-  z <- sample(1:3, 25, replace = TRUE)
-  use_data_priors <- TRUE
-  user_fixed_priors <- NULL
-
-  # Mock very small variances in x_vars
-  x_vars[[1]][[1]] <- matrix(rnorm(25, sd = 1e-8), nrow = 5)
-
-  # Call the function
-  result <- prior_combined(params, component, y, x_vars, z, use_data_priors, user_fixed_priors)
-
-  # Validate result is numeric
-  expect_type(result, "double")
-  expect_false(is.nan(result)) # Ensure the result is not NaN
-})
-
-test_that("prior_combined returns a valid prior for all components", {
-  # Mock data
-  params <- c(5, 1, 2, 0, 1)
-  y <- rnorm(25)
-  x_vars <- list(
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5)),
-    list(matrix(rnorm(25), nrow = 5))
-  )
-  z <- sample(1:3, 25, replace = TRUE)
-  use_data_priors <- TRUE
-  user_fixed_priors <- NULL
-
-  # Test all components
-  for (component in 1:3) {
-    result <- prior_combined(params, component, y, x_vars, z, use_data_priors, user_fixed_priors)
-    expect_type(result, "double")
-  }
+test_that("Empty component is handled via fallback (not a crash)", {
+  N <- 3
+  y <- rep(0, N * N)
+  x_vars <- replicate(4, list(matrix(0, N, N)), simplify = FALSE)
+  z <- rep(1L, N * N)                    # no 2s at all
+  params <- rep(0, 5)
+  
+  expect_silent(val <- prior_combined(params, 2, y, x_vars, z, TRUE, NULL))
+  expect_true(is.finite(val))
 })

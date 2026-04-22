@@ -12,7 +12,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // run_metropolis_MCMC_betas
-List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations, List x_vars, NumericMatrix y, bool use_data_priors, Nullable<List> user_fixed_priors, std::string dist, Nullable<double> epsilon, std::string distance_metric, Nullable<NumericMatrix> size_start, Nullable<double> theta_start);
+List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations, List x_vars, NumericMatrix y, bool use_data_priors, Nullable<List> user_fixed_priors, std::string dist, Nullable<double> epsilon, std::string distance_metric, Nullable<NumericVector> size_start, Nullable<double> theta_start);
 RcppExport SEXP _HiCPotts_run_metropolis_MCMC_betas(SEXP NSEXP, SEXP gamma_priorSEXP, SEXP iterationsSEXP, SEXP x_varsSEXP, SEXP ySEXP, SEXP use_data_priorsSEXP, SEXP user_fixed_priorsSEXP, SEXP distSEXP, SEXP epsilonSEXP, SEXP distance_metricSEXP, SEXP size_startSEXP, SEXP theta_startSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -27,7 +27,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string >::type dist(distSEXP);
     Rcpp::traits::input_parameter< Nullable<double> >::type epsilon(epsilonSEXP);
     Rcpp::traits::input_parameter< std::string >::type distance_metric(distance_metricSEXP);
-    Rcpp::traits::input_parameter< Nullable<NumericMatrix> >::type size_start(size_startSEXP);
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type size_start(size_startSEXP);
     Rcpp::traits::input_parameter< Nullable<double> >::type theta_start(theta_startSEXP);
     rcpp_result_gen = Rcpp::wrap(run_metropolis_MCMC_betas(N, gamma_prior, iterations, x_vars, y, use_data_priors, user_fixed_priors, dist, epsilon, distance_metric, size_start, theta_start));
     return rcpp_result_gen;

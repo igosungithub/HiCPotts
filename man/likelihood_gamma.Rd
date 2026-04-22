@@ -18,7 +18,7 @@ as neighbors.}
 representing the spatial layout of the Potts model.}
 }
 \value{
-A numeric \code{N x N} matrix of normalized probabilities corresponding to the Potts model likelihood
+A numeric \code{N x N} matrix of probabilities corresponding to the Potts model likelihood
 for the given interaction parameter. Each element of the matrix represents the likelihood contribution of
 that site/pair under the model parameterized by \code{x}.
 }
@@ -41,7 +41,7 @@ This function:
         \eqn{x * pair\_neighbours\_DA\_x1} to avoid numerical overflow.
   \item Exponentiates these adjusted values and normalizes them to obtain a set of values that sum to 1,
         interpreting them as probabilities or likelihood contributions.
-  \item Reshapes these normalized values into an \code{N x N} matrix, \code{potts_DA}, which represents
+  \item Reshapes these values into an \code{N x N} matrix, \code{potts_DA}, which represents
         the spatial layout of likelihoods (or probabilities) under the Potts model.
 }
 }

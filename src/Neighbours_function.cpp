@@ -1,54 +1,80 @@
 #include <RcppArmadillo.h>
 using namespace Rcpp;
 
-
 // Helper function to create shifted matrices
-NumericMatrix shift_matrix(const NumericMatrix& data, std::string shift_direction, int N) {
+// Helper: shift_matrix(data, dir, N)
+//
+// Returns an N x N matrix whose (i,j) entry is:
+//   "down"  : data(i-1, j)     (i.e. the value ABOVE (i,j) in the original)
+//   "up"    : data(i+1, j)     (the value BELOW  (i,j) in the original)
+//   "right" : data(i,  j-1)    (the value to the LEFT  of (i,j))
+//   "left"  : data(i,  j+1)    (the value to the RIGHT of (i,j))
+// Border cells (where the neighbour falls off the lattice) are left at 0.
+// -----------------------------------------------------------------------------
+NumericMatrix shift_matrix(const NumericMatrix &data,
+                           std::string shift_direction,
+                           int N) {
   NumericMatrix shifted(N, N);
-
+ 
   if (shift_direction == "down") {
-    for (int i = 1; i < N; i++) {
-      for (int j = 0; j < N; j++) {
+    for (int i = 1; i < N; i++)
+      for (int j = 0; j < N; j++)
         shifted(i, j) = data(i - 1, j);
-      }
-    }
+ 
   } else if (shift_direction == "up") {
-    for (int i = 0; i < N - 1; i++) {
-      for (int j = 0; j < N; j++) {
+    for (int i = 0; i < N - 1; i++)
+      for (int j = 0; j < N; j++)
         shifted(i, j) = data(i + 1, j);
-      }
-    }
+ 
   } else if (shift_direction == "right") {
-    for (int i = 0; i < N; i++) {
-      for (int j = 1; j < N; j++) {
+    for (int i = 0; i < N; i++)
+      for (int j = 1; j < N; j++)
         shifted(i, j) = data(i, j - 1);
-      }
-    }
+ 
   } else if (shift_direction == "left") {
-    for (int i = 0; i < N; i++) {
-      for (int j = 0; j < N - 1; j++) {
+    for (int i = 0; i < N; i++)
+      for (int j = 0; j < N - 1; j++)
         shifted(i, j) = data(i, j + 1);
-      }
-    }
+ 
+  } else {
+    stop("Unknown shift_direction: %s", shift_direction);
   }
-
+ 
   return shifted;
 }
 
 
-// Helper function to compute neighbours
-NumericMatrix compute_neighbours(const NumericMatrix& data1, const NumericMatrix& compare_matrix, int N) {
-  NumericMatrix result_matrix(N, N);
-  for (int i = 0; i < N; i++) {
-    for (int j = 0; j < N; j++) {
-      if (data1(i, j) == compare_matrix(i, j)) {
-        result_matrix(i, j) = 1;
-      }
-    }
-  }
-  return result_matrix;
+// -----------------------------------------------------------------------------
+// Helper: compute_neighbours(a, b, N)
+//   returns an N x N 0/1 matrix with 1 wherever a(i,j) == b(i,j).
+// -----------------------------------------------------------------------------
+NumericMatrix compute_neighbours(const NumericMatrix &a,
+                                 const NumericMatrix &b,
+                                 int N) {
+  NumericMatrix r(N, N);
+  for (int i = 0; i < N; i++)
+    for (int j = 0; j < N; j++)
+      r(i, j) = (a(i, j) == b(i, j)) ? 1.0 : 0.0;
+  return r;
 }
 
+// -----------------------------------------------------------------------------
+//Add Note:
+//
+// For each site (i,j) we want the COUNT of its four (up/down/left/right)
+// neighbours whose state equals the state at (i,j) (or at proposed_value(i,j)
+// when a proposed configuration is supplied). 
+//
+// The reference configuration (the "centre" of each site) is:
+//   - proposed_value, if supplied
+//   - potts_data, otherwise
+// The four neighbour configurations always come from potts_data (the *current*
+// Potts state). This is the usual single-site update convention.
+//
+// Border cells naturally get a 0 contribution from the missing side: the
+// shifted matrix is 0 at the border, and the reference takes values in
+// {1,2,3}, so the comparison is false.
+// -----------------------------------------------------------------------------
 
 //' @name Neighbours_combined
 //' @title Neighbours Function for the Potts Model
@@ -116,32 +142,31 @@ NumericMatrix compute_neighbours(const NumericMatrix& data1, const NumericMatrix
 //' @export
 //
 // [[Rcpp::export]]
-NumericMatrix Neighbours_combined(NumericMatrix potts_data, int N, Nullable<NumericMatrix> proposed_value = R_NilValue) {
-  bool is_proposed = proposed_value.isNotNull();
-  NumericMatrix compare_matrix1(N, N);
-
-  // Determine the shifted matrices and comparison matrix
-  NumericMatrix mydata1 = shift_matrix(potts_data, is_proposed ? "up" : "down", N);
-  if (is_proposed) {
-    compare_matrix1 = as<NumericMatrix>(proposed_value);
-  } else {
-    compare_matrix1 = mydata1;
-  }
-
-  // Compute neighbour relationships
-  NumericMatrix neighbour1 = compute_neighbours(mydata1, compare_matrix1, N);
-  NumericMatrix neighbour2 = compute_neighbours(shift_matrix(potts_data, is_proposed ? "down" : "up", N), is_proposed ? as<NumericMatrix>(proposed_value) : neighbour1, N);
-  NumericMatrix neighbour3 = compute_neighbours(shift_matrix(potts_data, is_proposed ? "left" : "right", N), is_proposed ? as<NumericMatrix>(proposed_value) : neighbour1, N);
-  NumericMatrix neighbour4 = compute_neighbours(shift_matrix(potts_data, is_proposed ? "right" : "left", N), is_proposed ? as<NumericMatrix>(proposed_value) : neighbour1, N);
-
-  // Calculating the total neighbours
-  NumericMatrix Neighbours_total(N, N);
-  for (int i = 0; i < N; i++) {
-    for (int j = 0; j < N; j++) {
-      Neighbours_total(i, j) = neighbour1(i, j) + neighbour2(i, j) + neighbour3(i, j) + neighbour4(i, j);
-    }
-  }
-
-  return as<NumericMatrix>(Neighbours_total);
-
+NumericMatrix Neighbours_combined(NumericMatrix potts_data,
+                                  int N,
+                                  Nullable<NumericMatrix> proposed_value = R_NilValue) {
+  NumericMatrix ref = proposed_value.isNotNull()
+                       ? as<NumericMatrix>(proposed_value)
+                       : potts_data;
+ 
+  // Build the four shifted copies of potts_data (the current state)
+  NumericMatrix up    = shift_matrix(potts_data, "down",  N); // neighbour above each cell
+  NumericMatrix down  = shift_matrix(potts_data, "up",    N); // neighbour below
+  NumericMatrix left  = shift_matrix(potts_data, "right", N); // neighbour to the left
+  NumericMatrix right = shift_matrix(potts_data, "left",  N); // neighbour to the right
+ 
+  // Compare the reference configuration to each shifted copy
+  NumericMatrix m_up    = compute_neighbours(ref, up,    N);
+  NumericMatrix m_down  = compute_neighbours(ref, down,  N);
+  NumericMatrix m_left  = compute_neighbours(ref, left,  N);
+  NumericMatrix m_right = compute_neighbours(ref, right, N);
+ 
+  // Sum agreements (count in 0..4)
+  NumericMatrix total(N, N);
+  for (int i = 0; i < N; i++)
+    for (int j = 0; j < N; j++)
+      total(i, j) = m_up(i, j) + m_down(i, j) + m_left(i, j) + m_right(i, j);
+ 
+  return total;
 }
+ 

@@ -111,33 +111,26 @@
 #'
 posterior_combined <- function(pred_combined, params, z, y, x_vars, component, theta, N,
                                use_data_priors, user_fixed_priors, dist, size) {
-  # Validate inputs
-  if (length(z[z == component]) == 0) {
-    stop(sprintf("Invalid component: %s", component))
+  if (!is.character(dist) || length(dist) != 1L)
+    stop("'dist' must be a single character string.")
+  
+  lp_size <- 0                              # <- move here
+  if (dist %in% c("NB", "ZINB")) {
+    if (is.null(size) || !is.finite(size) || size <= 0)
+      stop("A positive finite 'size' is required for NB/ZINB distributions.")
+    lp_size <- size_prior(size, component)
   }
-
-  # Compute the likelihood
-  likelihood <- likelihood_combined(pred_combined, params, z, y, x_vars, component, theta, N,
-    dist = dist, size = size
+  
+  ll <- likelihood_combined(
+    pred_combined = pred_combined, params = params, z = z, y = y,
+    x_vars = x_vars, component = component, theta = theta, size = size,
+    N = N, dist = dist
   )
   
-  # Compute the prior for the parameters
-  prior <- prior_combined(params, component, y, x_vars, z, use_data_priors, user_fixed_priors)
+  lp <- prior_combined(
+    params = params, component = component, y = y, x_vars = x_vars, z = z,
+    use_data_priors = use_data_priors, user_fixed_priors = user_fixed_priors
+  )
   
-  # If dist is "NB" or "ZINB", add the size prior
-  if (dist == "NB" || dist == "ZINB") {
-    # Validate size and component
-    if (is.null(size) || component < 1 || component > 3) {
-      stop("Invalid size or component for NB/ZINB distribution")
-    }
-
-    # Calculate the size prior
-    size_prior_value <- size_prior(size, component)
-    
-    # Return the combined posterior
-    return(likelihood + prior + size_prior_value)
-  } else {
-    # Return only likelihood + prior when dist is not "NB" or "ZINB"
-    return(likelihood + prior)
-  }
+  ll + lp + lp_size
 }

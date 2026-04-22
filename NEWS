@@ -1,9 +1,96 @@
-Changes in version 0.99.6 (2025-08-11):
-- Updated the Description file
-- Accepted and made changes based on the reviewer's feedback.
-- Initial release of HiCPotts.
-- Added core functions: get_data(), process_data(), run_chain_betas(), compute_HMRFHiC_probabilities().
-- Supported distributions: Poisson, Zero-Inflated Poisson, Negative Binomial, Zero-Inflated Negative Binomial.
-- Implemented C++ optimizations using Rcpp and RcppArmadillo for performance.
-- Integrated covariates: genomic distance, GC content, accessibility, and transposable element counts.
-- Addressed BiocCheck requirements: added runnable examples, replaced sapply with vapply, moved large data files to ExperimentHub.
+Changes in version 1.1.1 (2026-04-21)
+
+All changes involve improving, tidying and simplifying the codes and removing bugs.
+It also makes it easier for non-statisticians to understand.
+
+* run_metropolis_MCMC_betas() is now defined ONLY in R/RcppExports.R
+  (plus its C++ backend). The duplicate R version in R/MCMC_chain.R
+  has been deleted; it referenced an undefined mc_cores variable and
+  used the wrong PACKAGE = "HMRFHiC" tag. Same for pz_123() in the
+  now-deleted R/potts_posterior.R.
+
+* likelihood_combined() for components 2 and 3 more simplified and efficient to evaluates the density
+  on EVERY observation in the component. This makes it easier for non-statisticians to understand
+  
+* ZIP/ZINB zero-probability is now log(theta + (1-theta) * exp(-mu))
+  where mu = exp(eta) is the Poisson/NB mean. 1.0.0 used exp(-eta). Changed in both R/likelihood.R and
+  src/potts_posterior.cpp.
+  
+* Neighbours_combined() (C++) rewritten to simplify the comparing of the
+  reference configuration (current state or proposed state) to each of
+  the four shifted copies of the current state.
+  
+* run_metropolis_MCMC_betas() ABC step for gamma uses the PROPOSED
+  gamma to simulate synthetic data. 1.0.0 used chain_gamma[iter]. This helps to 
+  improve the accept/reject step.
+  
+* The ABC tolerance epsilon and the distance statistic are now on the
+  same scale: mean |y - synthetic| (or RMS for distance_metric =
+  "euclidean"), and epsilon defaults to the 10% quantile of per-cell
+  |y - synthetic|. 1.0.0 compared a mean-difference distance against
+  the 20% quantile of exp(|y - synthetic|).
+  
+* The Metropolis-Hastings ratio for the regression coefficients no
+  longer includes a proposaldensity_combined() term. The proposal is
+  a symmetric Gaussian random walk, for which the proposal-density
+  ratio cancels. 
+  
+* prior_combined() is now more DETERMINISTIC given the same parameters,
+  data, and component assignments. 1.0.0 called rnorm() and rgamma()
+  inside the prior, so pi(theta) changed between calls and the MH
+  acceptance ratio was stochastic.
+
+* compute_HMRFHiC_probabilities() no longer caps interactions
+  at 500. The previous behaviour is available via max_interactions =
+  500L. burnin is now an integer that includes the last MCMC sample
+  (fixes fractional-index warnings when iterations is odd).
+
+* A new consistent_dist = TRUE default in compute_HMRFHiC_probabilities()
+  uses the same emission distribution for all three components. Pass
+  consistent_dist = FALSE for the previous 1.0.0 behaviour (ZIP/ZINB
+  only for component 1, others reduced to Poisson/NB).
+
+* compute_HMRFHiC_probabilities() now uses log-sum-exp normalisation,
+  avoiding underflow for very small component densities.
+  
+  
+* On Windows, mc_cores > 1 now emits a warning and falls back to 1
+  (parallel::mclapply does not fork on Windows).
+
+* get_data() now raises an informative error when passed a .hic file
+  (these are not HDF5 and were failing silently inside h5ls).
+
+* The slice-rebin path in get_data() now aggregates duplicate entries
+  produced by splitting a larger native bin into smaller target bins,
+  instead of silently keeping only the last.
+
+* posterior_combined() now calls likelihood_combined() with named
+  arguments, eliminating positional fragility.
+
+* process_data() now defaults to standardization_y = FALSE. When
+  scaling is requested, it emits a warning because min-max rescaling
+  of count data breaks the count-regression assumption.
+
+PACKAGE METADATA
+
+* BSgenome.Dmelanogaster.UCSC.dm6 moved from Imports to Suggests.
+  Installing HiCPotts no longer forces users of other species to
+  download the Drosophila genome.
+
+* strawr removed from Imports (it was never called). Added to
+  Suggests for users wanting to handle raw .hic files themselves.
+
+* DESCRIPTION license tag (GPL-3), README badge (MIT), and documented
+  R version (>= 4.2) reconciled: GPL-3 and R (>= 4.5) are now the
+  package's authoritative values.
+
+* Vignette updated: correct function name (get_data, not
+  prepare_data); user_fixed_priors example restructured with correct field names;
+  ZIP/ZINB chunk consistency fixed.
+
+
+TESTING
+
+* tests/testthat replaced with a suite that verifies numerical
+  correctness (closed-form Poisson/NB/ZIP densities, hand-computed
+  neighbour counts, and regression tests for every fix above).

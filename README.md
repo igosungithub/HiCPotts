@@ -36,28 +36,48 @@ BiocManager::install("HiCPotts")
 
 Requirements: R ≥ 4.2, C++17 compiler, plus
 Rcpp, RcppArmadillo, parallel.
+```
+The optional genome support uses BSgenome.Dmelanogaster.UCSC.dm6 (only needed to compute GC content from raw coordinates, hence moved to Suggests):
 
+```r
+BiocManager::install("BSgenome.Dmelanogaster.UCSC.dm6")
+```
+
+## 3  Quick start
+
+```r
 library(HiCPotts)
+
 
 ## 1  Load long‑format interaction table
 df <- read.csv("hic_interactions.csv")  # start, end, interactions, GC, ACC, TES
 
 ## 2  Convert to N×N matrices
-prep   <- process_data(df, N = 40, standardization_y = TRUE)
+prep   <- process_data(df, N = 40, standardization_y = FALSE)
 x_vars <- prep$x_vars
 y_list <- prep$y                      # list of 40×40 matrices
 
 ## 3  Run the three‑component MCMC
 res <- run_chain_betas(
-  y_sim_list   = y_list,
   N            = 40,
   iterations   = 5000,
   x_vars       = x_vars,
-  thetap       = 0.5,        # initial θ
-  size_initial = c(1, 1, 1), # initial NB size for the 3 comps
+  y_sim_list   = y_list,
+  use_data_prior = TRUE,
   dist         = "ZINB",
-  mc_cores     = 4
+  size_initial = c(1, 1, 1), # initial NB size for the 3 comps
+  thetap       = 0.5,        # initial θ
+  mc_cores     = 1
 )
+
+## 4  Posterior component probabilities
+probs <- compute_HMRFHiC_probabilities(
+  data        = df,
+  chain_betas = results,                    # full list, NOT results[["chains"]]
+  iterations  = 2000,
+  dist        = "ZINB"
+)
+head(probs)
 ```
 
 ```mermaid
@@ -90,15 +110,6 @@ plot(mcmc1$gamma, type = "l", col = "#1f77b4",
 
 ## posterior means of βs for component 1
 colMeans(mcmc1$chains[[1]][-(1:2500), ])
-
-pm <- compute_HMRFHiC_probabilities(
-  data         = df,
-  chain_betas  = mcmc1$chains,
-  iterations   = 5000,
-  dist         = "ZINB"
-)
-
-head(pm[, c("start", "end", "prob1", "prob2", "prob3")])
 ```
 Advanced options
 Distribution choice – dist = "Poisson", "NB" or "ZIP".
@@ -162,6 +173,25 @@ chains=run_chain_betas(
   mc_cores = 22
 )
 ```
-
+## 4  Important changes from 1.0.0 -> 1.0.1
+The 1.0.1 patch release fixes a number of statistical and plumbing bugs surfaced by external review. Most user code will continue to run unchanged. Highlights:
+ 
+* **Component 2 and 3 likelihoods** now use every data point assigned to the component, and does not force stop if a component was not assigned any data during iteration.
+* **ZIP/ZINB zero probability** written for more clarify to $\theta + (1-\theta)\exp(-\mu)$.
+* **Neighbour counting** in `Neighbours_combined()` now returns counts in $\{0,1,2,3,4\}$ as intended.
+* **ABC update for $\gamma$** simulates synthetic data with the proposed $\gamma$ with a more refined distribution.
+* **MH acceptance** for regression coefficients no longer includes a "proposal density" term; the symmetric Gaussian random-walk proposal cancels correctly.
+* **Data-driven priors** are more deterministic given the same (parameters, data, assignments) and refined distribution.
+* `compute_HMRFHiC_probabilities()` no longer silently caps interactions at 500; pass `max_interactions = 500` to restore the old behaviour.
+* Windows: `mc_cores > 1` emits a warning and falls back to 1 (previously silently).
+* `.hic` input to `get_data()` now raises an informative error (previously failed inside `h5ls`).
+See `NEWS` for the full list.
+ 
+---
+ 
+## 5. Feedback and bug reports
+ 
+Please file issues at <https://github.com/igosungithub/HiCPotts/issues>.
+ 
 License
-MIT © 2025 Itunu Osuntoki
+GPL-3 © 2025 Itunu Osuntoki

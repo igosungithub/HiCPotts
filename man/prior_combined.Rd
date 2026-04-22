@@ -58,27 +58,19 @@ In both modes, the priors are assumed to be normal distributions for each parame
 \examples{
 
 # Example:
-N <- 100
-y <- rpois(N, lambda = 5)
+N <- 5
+y <- rpois(N*N, lambda = 5)
 x_vars <- list(
-  list(runif(N)), # x1
-  list(rnorm(N)), # x2
-  list(rnorm(N)), # x3
-  list(rnorm(N)) # x4
+  list(runif(N*N)), # x1
+  list(rnorm(N*N)), # x2
+  list(rnorm(N*N)), # x3
+  list(rnorm(N*N)) # x4
 )
-z <- sample(1:3, N, replace = TRUE)
-params <- c(a = 1, b = 0.5, c = -0.2, d = 2, e = 0.3)
+z <- sample(1:3, N*N, replace = TRUE)
+params <- c(a = 1, b = 0.5, c = -0.2, d = 0.1, e = 0.3)
 
 # Using data-driven priors for component 1
-prior_val_data <- prior_combined(
-  params = params,
-  component = 1,
-  y = y,
-  x_vars = x_vars,
-  z = z,
-  use_data_priors = TRUE,
-  user_fixed_priors = NULL
-)
+#' prior_combined(params, 1, y, x_vars, z, TRUE, NULL)
 
 # Using user-specified fixed priors for component 2
 #user_fixed_priors <- list(
@@ -105,7 +97,5 @@ prior_val_data <- prior_combined(
 #  use_data_priors = FALSE,
 #  user_fixed_priors = user_fixed_priors
 #)
-
-
 
 }

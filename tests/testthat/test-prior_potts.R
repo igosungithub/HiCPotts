@@ -1,21 +1,19 @@
-test_that("gamma_prior_value generates a valid beta-distributed value", {
-  # Call the function
-  result <- gamma_prior_value()
-
-  # Check that the result is numeric
-  expect_type(result, "double")
-
-  # Check that the result is within the valid range for a Beta distribution (0, 1)
-  expect_true(result >= 0 && result <= 1)
+test_that("gamma_prior_value returns a finite scalar in [0, 1]", {
+  x <- replicate(100, gamma_prior_value())
+  expect_true(all(is.finite(x)))
+  expect_true(all(x >= 0 & x <= 1))
+  expect_gt(length(unique(x)), 1L)       # stochastic
 })
 
-test_that("gamma_prior_value generates different values across multiple calls", {
-  # Generate multiple values
-  results <- replicate(100, gamma_prior_value())
+test_that("proposalfunction mirrors gamma_prior_value", {
+  x <- replicate(100, proposalfunction())
+  expect_true(all(is.finite(x)))
+  expect_true(all(x >= 0 & x <= 1))
+})
 
-  # Check that there is variability in the results
-  expect_gt(length(unique(results)), 1)
-
-  # Ensure all generated values are within the valid range
-  expect_true(all(results >= 0 & results <= 1))
+test_that("size_prior rejects invalid inputs", {
+  expect_error(size_prior(-1, 1),  "positive")
+  expect_error(size_prior(NA, 1),  "finite")
+  expect_error(size_prior(1, 4),   "component")
+  expect_true(is.finite(size_prior(3.0, 2)))
 })

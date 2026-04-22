@@ -113,29 +113,41 @@ The `get_data()` function reads Hi-C contact matrices and annotates bins with co
 Simulate a 10x10 Hi-C dataset
 
 ```{r simulate-data, include=FALSE, eval=TRUE}
-set.seed(123)
+set.seed(4921)
 
+# Lattice size: an N x N grid of genomic bins.
+# Each cell of the grid represents an interaction between bin i and bin j.
 N <- 10
 
+# Define the start coordinate of each bin (10 bins, 2 kb wide → 20 kb region)
 bins <- seq(1, 20000, by = 2000)
 
+# Create every pairwise combination of bin i vs bin j
 data <- expand.grid(start = bins, start.j. = bins)
 
+# Bin end coordinates (each bin is 2 kb wide)
 data$end.i. <- data$start + 1999
 
 data$end <- data$start.j. + 1999
 
+# Chromosome label (Drosophila chr2L here)
 data$chrom <- "chr2L"
 
-data$GC <- runif(nrow(data), 0.3, 0.7) # Simulated GC content
+# ── Simulate the four bias covariates ────────────────────────────────────────
+data$GC <- runif(nrow(data), 0.3, 0.7) # Simulated GC content, GC fraction (biological range 30–70%)
 
-data$ACC <- runif(nrow(data), 0, 1) # Simulated accessibility
+data$ACC <- runif(nrow(data), 0, 1) # Simulated accessibility, DNase-I accessibility score (0–1)
 
-data$TES <- rpois(nrow(data), 2) # Simulated TE counts
+data$TES <- rpois(nrow(data), 2) # Simulated TE counts, Count of overlapping transposable elements
 
+# Poisson(λ = 5) approximates sparse Hi-C counts at this resolution
 data$interactions <- rpois(nrow(data), lambda = 5) # Simulated interaction counts
+
+# Coerce to a plain data.frame (expand.grid returns a class with extra attrs)
 data <- as.data.frame(data)
 
+# Inspect the first few rows – note the required column names:
+#   start, start.j., end.i., end, chrom, GC, ACC, TES, interactions
 head(data)
 ```
 
@@ -143,6 +155,16 @@ In practice, the `get_data()` function is used to load real Hi-C data from .cool
 
 ```{r get_data, include=FALSE, eval=FALSE}
 # Example (not run)
+# For actual Hi-C / Micro-C files use get_data() with these arguments:
+#
+#   file_path      – path to a .cool, .mcool, .hic, or .h5 matrix
+#   chr            – chromosome to extract (e.g. "chr2L", "chr4")
+#   start, end     – genomic window (bp, 1-based inclusive)
+#   resolution     – target bin size in bp; native bins are merged/sliced
+#   genome_package – BSgenome package used for GC computation
+#   acc_wig        – optional bedGraph/wig of DNase-I (or ATAC) accessibility
+#   chain_file     – optional liftOver chain if acc_wig is in another assembly
+#   te_granges     – optional BED/GTF (or GRanges) of transposable elements
 
 data <- prepare_data(
   file_path = "path/to/hic_file.h5",
@@ -162,11 +184,26 @@ data <- prepare_data(
 The `process_data()` function converts the data frame generated through the `prepare_data()` function into a list of (N $\times$ N) matrices for interactions (`y`) and covariates (`x_vars`), optionally scaling interaction counts. Also, if a HiCExperiment object is already available and the sources of biases are known and organized in a separate data frame, these can be combined into a single data frame using base R functions and the `prepare_data()` function to convert into a list for analysis.
 
 ```{r process_data, include=FALSE, eval=TRUE}
+# ── Reshape the tidy interaction table into matrices for MCMC ────────────────
+# process_data() returns a list with two elements:
+#   $y      – an N x N matrix of observed interaction counts
+#   $x_vars – a list of N x N matrices, one per covariate
+#             (distance, GC, TES, ACC)
+#
+# Arguments:
+#   data             – data.frame with the 9 required columns (see above)
+#   N                – lattice dimension (here 10, matching 10 bins)
+#   scale_max        – upper bound used when rescaling counts (prevents
+#                      very large values from dominating the likelihood)
+#   standardization_y – TRUE rescales counts to [0, scale_max]; FALSE keeps raw
+
 processed <- process_data(data, N = N, scale_max = 500, standardization_y = TRUE)
 
+# Pull the two pieces out of the returned list
 x_vars <- processed[["x_vars"]] # Single matrix for this example
 y <- processed[["y"]]
 
+# Inspect x_vars: should be a list of distance, GC, TES, ACC matrices
 str(x_vars) # Lists of distance, GC, TEs, ACC matrices
 ```
 
@@ -177,20 +214,35 @@ This produces matrices for distance, GC, TEs, ACC, and interaction counts, ready
 The `run_chain_betas()` function runs MCMC simulations to estimate parameters (($\beta$), ($\gamma$), ($\theta$ (for Zero-Inflated distributions)), size(for Negative binomial distributions)) and latent state assignments ((z)). In the example below, we use the Zero-Inflated Negative Binomial (ZINB) distribution to model the simulated sparse Hi-C data.
 
 ```{r setup_MCMC, include=FALSE, eval=TRUE}
-# Set MCMC parameters
+# ── Define MCMC hyper-parameters and starting values ─────────────────────────
+
+# Potts spatial-coupling parameter (γ). Values closer to 1 encourage
+# neighbouring bins on the lattice to share the same latent state.
 gamma_prior <- 0.3
 
+# Total number of MCMC iterations. Burn-in defaults to iterations / 2.
+# Use a small value here for vignette speed; 5 000+ is typical for real data.
 iterations <- 20
 
+# Initial value for the zero-inflation parameter (θ).
+# Required when dist = "ZIP" or "ZINB"; ignored otherwise.
 theta_start <- c(0.5)
 
+# size_start (commented out) – only needed for "NB" or "ZINB":
+# one initial over-dispersion value per mixture component.
 # size_start <- c(1, 1, 1)
 
+# Choice of count distribution for interactions. Options:
+#   "Poisson", "NB", "ZIP", "ZINB"
+# ZIP is a reasonable default for sparse Hi-C with many structural zeros.
 dist <- "ZIP"
 ```
 
 ```{r run_MCMC, include=FALSE, eval=TRUE}
-# Run MCMC
+# ── Run the Metropolis-Hastings MCMC sampler ─────────────────────────────────
+# run_chain_betas() samples from the joint posterior of the regression
+# coefficients for all three mixture components simultaneously.
+
 results <- run_chain_betas(
   N = N,
   gamma_prior = gamma_prior,
@@ -209,13 +261,22 @@ results <- run_chain_betas(
 ```
 
 ```{r MCMC_results, include=FALSE, eval=TRUE}
-# Extract results
+# ── Extract the individual components of the MCMC output ─────────────────────
+# 'results' is a named list. Each element corresponds to a different set
+# of posterior samples.
+
+# Regression coefficient chains – one matrix per mixture component
+# (rows = iterations, columns = covariates incl. intercept)
+
 chains <- results[["chains"]]
 
+# Posterior samples of the Potts spatial-coupling parameter γ
 gamma <- results[["gamma"]]
 
+# Posterior samples of the zero-inflation parameter θ (ZIP / ZINB only)
 theta <- results[["theta"]]
 
+# Over-dispersion size parameter – only present for NB / ZINB
 # size <- results[["size]]
 ```
 
@@ -226,7 +287,11 @@ The output includes chains for regression parameters (`chains`), the Potts inter
 The `compute_HMRFHiC_probabilities()` function calculates posterior probabilities for each interaction belonging to one of three mixture components, using the MCMC chains.
 
 ```{r compute_result, include=FALSE, eval=TRUE}
-# Compute probabilities
+# ── Compute posterior HMRF component-assignment probabilities ────────────────
+# For every bin-pair, compute P(component = k) for k = 1, 2, 3 using the
+# posterior-mean regression parameters (first iterations/2 are discarded
+# as burn-in internally).
+
 probs <- compute_HMRFHiC_probabilities(
   data = data,
   chain_betas = chains,
@@ -236,6 +301,251 @@ probs <- compute_HMRFHiC_probabilities(
 
 probs$prob1 # This produces matrices of probabilities for the first component, which translate to assigning interactions to biological states (e.g., active vs. inactive chromatin).
 ```
+
+
+# Worked Examples: Hi-C and Micro-C Data
+
+The synthetic example above is useful for illustrating the API but is not
+biologically meaningful. This section walks through two fully realistic
+analyses — one for **Hi-C** and one for **Micro-C** — using the exact same
+four-step workflow. The Hi-C data files are shipped with the package under
+`inst/extdata`; the Micro-C paths are illustrative and should be replaced
+with your own files.
+
+## Example 1: Hi-C Data
+
+We analyse a 100 kb-resolution Hi-C contact map of *D. melanogaster* chr4
+in BG3 cells, integrating DNase-I accessibility and transposable-element
+annotations for bias correction.
+
+### Step 1 — Locate input files
+
+```{r hic_paths, echo=TRUE, eval=TRUE}
+# Hi-C contact matrix (.cool, 100 kb, BG3 cells, chr4)
+hic_file   <- system.file("extdata",
+                          "BG3_WT_merged_hic_matrix_chr4_100Kb.cool",
+                          package = "HiCPotts")
+
+# DNase-I accessibility bedGraph (dm3 genome coordinates)
+dnase_file <- system.file("extdata",
+                          "DNaseI_BG3_gr_chr4.bedGraph",
+                          package = "HiCPotts")
+
+# LiftOver chain — maps dm3 accessibility up to dm6 assembly
+chain_file <- system.file("extdata",
+                          "dm3ToDm6_chr4_only.chain",
+                          package = "HiCPotts")
+
+# Transposable-element annotations (GTF, dm6 chr4)
+te_file    <- system.file("extdata",
+                          "dm6_TEs_chr4.gtf",
+                          package = "HiCPotts")
+
+stopifnot(file.exists(hic_file),
+          file.exists(dnase_file),
+          file.exists(chain_file),
+          file.exists(te_file))
+```
+
+### Step 2 — Load Hi-C data and compute covariates
+
+```{r hic_get_data, echo=TRUE, eval=TRUE}
+# get_data() does four things in one call:
+#   1. Reads the .cool file and rebins to the requested resolution
+#   2. Calculates GC content from the BSgenome package
+#   3. Lifts over the DNase-I signal (dm3 -> dm6) and aggregates per bin
+#   4. Counts transposable elements overlapping each bin pair
+hic_data <- get_data(
+  file_path      = hic_file,
+  chr            = "chr4",
+  start          = 1,
+  end            = 400000,
+  resolution     = 200000,
+  genome_package = "BSgenome.Dmelanogaster.UCSC.dm6",
+  acc_wig        = dnase_file,
+  chain_file     = chain_file,
+  te_granges     = te_file
+)
+
+head(hic_data)
+```
+
+### Step 3 — Process data into matrices
+
+```{r hic_process, echo=TRUE, eval=FALSE}
+# (end - start) / resolution, rounded up for the edge bin.
+N_hic <- 14
+
+processed_hic <- process_data(
+  hic_data,
+  N                 = N_hic,
+  scale_max         = 500,
+  standardization_y = TRUE
+)
+
+x_vars_hic <- processed_hic[["x_vars"]]
+y_hic      <- processed_hic[["y"]]
+```
+
+### Step 4 — Run MCMC with a realistic sampler configuration
+
+```{r hic_mcmc, echo=TRUE, eval=FALSE}
+# ZINB is recommended for Hi-C because of structural zeros and
+# over-dispersion typical of ligation-based count data.
+set.seed(2025)
+
+hic_results <- run_chain_betas(
+  N                = N_hic,
+  gamma_prior      = 0.3,
+  iterations       = 5000,
+  x_vars           = x_vars_hic,
+  y                = y_hic,
+  theta_start      = 0.5,
+  size_start       = c(1, 1, 1),
+  use_data_priors  = TRUE,
+  distance_metric  = "manhattan",
+  dist             = "ZINB",
+  mc_cores         = min(4L, parallel::detectCores() - 1L)
+)
+
+# run_chain_betas() returns a list with one element per input dataset.
+# Unpack the first (and here only) chain set:
+hic_chains <- hic_results[[1]][["chains"]]
+hic_gamma  <- hic_results[[1]][["gamma"]]
+hic_theta  <- hic_results[[1]][["theta"]]
+hic_size   <- hic_results[[1]][["size"]]
+```
+
+### Step 5 — Compute posterior component probabilities
+
+```{r hic_probs, echo=TRUE, eval=FALSE}
+# Pass the full results list, not just the chains.
+hic_probs <- compute_HMRFHiC_probabilities(
+  data        = hic_data,
+  chain_betas = hic_results,
+  iterations  = 5000,
+  dist        = "ZINB"
+)
+
+# hic_probs is a data.frame with prob1, prob2, prob3 columns that sum to 1
+# per row. prob1 is the noise/baseline component; prob2 and prob3 are the
+# elevated-signal regimes.
+head(hic_probs[, c("start", "end", "interactions", "prob1", "prob2", "prob3")])
+
+# Bin-pairs confidently classified as elevated signal (prob2 > 0.9). This value can be increase or reduce based on user's justification.
+genuine_signal <- hic_probs[hic_probs$prob2 > 0.9,
+                            c("start", "end", "interactions", "prob2")]
+head(genuine_signal)
+```
+
+## Example 2: Micro-C Data
+
+Micro-C uses micrococcal nuclease (MNase) instead of a restriction enzyme,
+yielding nucleosome-resolution contact maps (~150 bp). The HiCPotts workflow
+is **identical** to Hi-C; practical differences:
+
+* **Input file**: typically a higher-resolution `.cool` or `.mcool`.
+* **Resolution**: 1 kb – 5 kb rather than 10 – 100 kb.
+* **Structural zeros**: even more abundant at fine resolution — ZINB strongly
+  recommended.
+* **Iterations**: larger lattices need longer chains to converge.
+
+### Step 1 — Locate input files
+
+```{r microc_paths, echo=TRUE, eval=FALSE}
+# Replace these with the actual paths on your machine.
+microc_file <- "path/to/MicroC_BG3_chr4_1kb.cool"
+dnase_file  <- "path/to/DNaseI_BG3_gr_chr4.bedGraph"
+chain_file  <- "path/to/dm3ToDm6_chr4_only.chain"
+te_file     <- "path/to/dm6_TEs_chr4.gtf"
+```
+
+### Step 2 — Load Micro-C data
+
+```{r microc_get_data, echo=TRUE, eval=FALSE}
+# Aggregate from the native 1 kb to 5 kb to keep the lattice manageable.
+microc_data <- get_data(
+  file_path      = microc_file,
+  chr            = "chr4",
+  start          = 1,
+  end            = 1350000,
+  resolution     = 5000,
+  genome_package = "BSgenome.Dmelanogaster.UCSC.dm6",
+  acc_wig        = dnase_file,
+  chain_file     = chain_file,
+  te_granges     = te_file
+)
+
+head(microc_data)
+```
+
+### Step 3 — Process into matrices
+
+```{r microc_process, echo=TRUE, eval=FALSE}
+# 1,350,000 / 5,000 = 270 bins -> a 270 x 270 lattice.
+N_microc <- 270
+
+processed_microc <- process_data(
+  microc_data,
+  N                 = N_microc,
+  scale_max         = 500,
+  standardization_y = TRUE
+)
+
+x_vars_microc <- processed_microc[["x_vars"]]
+y_microc      <- processed_microc[["y"]]
+```
+
+### Step 4 — Run MCMC
+
+```{r microc_mcmc, echo=TRUE, eval=FALSE}
+set.seed(2025)
+
+microc_results <- run_chain_betas(
+  N                = N_microc,
+  gamma_prior      = 0.3,
+  iterations       = 10000,
+  x_vars           = x_vars_microc,
+  y                = y_microc,
+  theta_start      = 0.5,
+  size_start       = c(1, 1, 1),
+  use_data_priors  = TRUE,
+  distance_metric  = "manhattan",
+  dist             = "ZINB",
+  mc_cores         = min(4L, parallel::detectCores() - 1L)
+)
+```
+
+### Step 5 — Posterior probabilities and classification
+
+```{r microc_probs, echo=TRUE, eval=FALSE}
+microc_probs <- compute_HMRFHiC_probabilities(
+  data        = microc_data,
+  chain_betas = microc_results,
+  iterations  = 10000,
+  dist        = "ZINB"
+)
+
+# Hard component assignment: the column with the highest posterior probability.
+probs_mat    <- as.matrix(microc_probs[, c("prob1", "prob2", "prob3")])
+component    <- max.col(probs_mat, ties.method = "first")
+table(component)
+```
+
+## Practical Notes on Hi-C vs. Micro-C
+
+| Aspect                   | Hi-C           | Micro-C        |
+|--------------------------|----------------|----------------|
+| Typical resolution       | 10 – 100 kb    | 1 – 5 kb       |
+| Lattice size `N`         | 10 – 1000      | 100 – 10000    |
+| Recommended `dist`       | ZINB or NB     | ZINB           |
+| Recommended `iterations` | 2000 – 5000    | 5000 – 20000   |
+| `mc_cores`               | 2 – 4          | 4 – 8          |
+
+The same `get_data() → process_data() → run_chain_betas() → compute_HMRFHiC_probabilities()`
+pipeline applies to both; only the argument values and compute budget change.
+
+
 
 # Advanced Usage
 
