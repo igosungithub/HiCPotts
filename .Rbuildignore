@@ -1,6 +1,10 @@
-^doc$
-^Meta$
-^Makevars$
-^data-raw/
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.git$
+^\.gitignore$
+^src/.*\.o$
+^src/.*\.dll$
+^src/.*\.so$
+^\.vscode$
+^doc$
+^Meta$

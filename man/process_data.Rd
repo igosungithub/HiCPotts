@@ -4,7 +4,8 @@
 \alias{process_data}
 \title{CSV file Data Processing for Hi-C Interaction Matrices and Covariates}
 \usage{
-process_data(data, N, scale_max = 500, standardization_y = TRUE)
+process_data(data, N, scale_max = NA_real_, 
+     standardization_y = FALSE, pad_with_zero = FALSE)
 }
 \arguments{
 \item{data}{A \code{data.frame} containing the following required columns:
@@ -22,12 +23,12 @@ provided should correspond to \eqn{N^2} interactions or multiples thereof, as it
 into one or more \eqn{N \times N} matrices.}
 
 \item{scale_max}{A numeric value indicating the maximum scaling factor for interaction counts
-when \code{standardization_y = TRUE}. Defaults to 500. After scaling, interaction counts
-range between [1, \code{scale_max}].}
+when \code{standardization_y = TRUE}.}
 
-\item{standardization_y}{A logical value. If \code{TRUE}, interaction counts are scaled to the
-range [1, \code{scale_max}] by applying a min-max normalization and rounding. If \code{FALSE},
+\item{standardization_y}{A logical value. If \code{TRUE}, interaction counts are scaled by applying a min-max normalization and rounding. If \code{FALSE},
 the raw interaction counts are used as provided.}
+
+\item{pad_with_zero}{Logical; if TRUE, zero-pads the last block when nrow(data) is not a multiple of N^2.}
 }
 \value{
 A list with two elements:
@@ -81,7 +82,8 @@ df <- data.frame(
   TES = runif(100, 0, 1),
   ACC = runif(100, 0, 1)
 )
-processed <- process_data(df, N = 10, scale_max = 500, standardization_y = TRUE)
+processed <- process_data(df, N = 10, scale_max = NA_real_, 
+  standardization_y = FALSE, pad_with_zero = FALSE)
 #x_vars <- processed$x_vars
 #y_matrices <- processed$y
 #str(x_vars) # Show structure of covariates
@@ -98,12 +100,13 @@ processed <- process_data(df, N = 10, scale_max = 500, standardization_y = TRUE)
 #  TES = runif(400, 0, 1),
 #  ACC = runif(400, 0, 1)
 #)
-#processed <- process_data(large_df, N = 20, scale_max = 500, standardization_y = TRUE)
+#processed <- process_data(large_df, N = 20, scale_max = NA_real_, 
+#   standardization_y = FALSE, pad_with_zero = FALSE)
 #x_vars <- processed[[1]]
 #y_matrices <- processed[[2]]
 #str(x_vars)
 #str(y_matrices)
-# See vignette("HMRFHiC_vignette") for detailed examples with real Hi-C data.
+# See vignette("HiCPotts_vignette") for detailed examples with real Hi-C data.
 #
 
 }

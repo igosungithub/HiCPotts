@@ -1,94 +1,103 @@
-test_that("compute_HMRFHiC_probabilities works with valid inputs", {
-  # Mock data
-  data <- data.frame(
-    start = c(1, 10, 20),
-    end = c(5, 15, 30),
-    interactions = c(10, 20, 30),
-    GC = c(0.5, 0.8, 0.3),
-    TES = c(0.2, 0.5, 0.7),
-    ACC = c(0.9, 0.4, 0.6)
+make_fake_chains <- function(n_iter, value_per_comp_per_col) {
+  ## value_per_comp_per_col: 3 x 5 matrix of constant values (per comp, per col)
+  chains_list <- lapply(seq_len(3), function(c) {
+    m <- matrix(0, nrow = n_iter + 1, ncol = 5)
+    for (col in 1:5) m[, col] <- value_per_comp_per_col[c, col]
+    m
+  })
+  list(list(
+    chains = chains_list,
+    theta  = rep(0.25, n_iter + 1),
+    size   = matrix(c(5, 10, 15), nrow = 3, ncol = n_iter + 1)
+  ))
+}
+
+test_that("probabilities sum to 1 per row", {
+  dat <- data.frame(
+    start        = c(1, 100, 500),
+    end          = c(50, 200, 800),
+    interactions = c(3, 5, 7),
+    GC           = c(0.4, 0.5, 0.6),
+    TES          = c(2, 3, 4),
+    ACC          = c(0.8, 0.5, 0.2)
   )
-
-  # Mock chain_betas with 5x5 matrices
-  chain_betas <- list(
-    list(
-      chains = list(
-        matrix(runif(25, 0.1, 1), ncol = 5),
-        matrix(runif(25, 0.1, 1), ncol = 5),
-        matrix(runif(25, 0.1, 1), ncol = 5)
-      ),
-      theta = runif(5, 0.1, 0.9),
-      size = matrix(runif(15, 1, 10), nrow = 3)
-    )
-  )
-
-  # Test with ZINB distribution
-  result <- compute_HMRFHiC_probabilities(data, chain_betas, iterations = 5, dist = "ZINB")
-
-  # Check output structure
-  expect_s3_class(result, "data.frame")
-  expect_true(all(c("start", "end", "interactions", "prob1", "prob2", "prob3") %in% colnames(result)))
-
-  # Check probabilities sum to 1 for each row
-  prob_sums <- rowSums(result[, c("prob1", "prob2", "prob3")])
-  expect_true(all(abs(prob_sums - 1) < 1e-6))
+  n_iter <- 10
+  vals <- matrix(c(
+    0.1, 0.2, 0.1, 0.05, 0.1,
+    0.3, 0.4, 0.2, 0.1,  0.2,
+    0.5, 0.1, 0.0, 0.3,  0.4
+  ), nrow = 3, ncol = 5, byrow = TRUE)
+  
+  res <- compute_HMRFHiC_probabilities(dat,
+                                       chain_betas = make_fake_chains(n_iter, vals),
+                                       iterations  = n_iter,
+                                       dist        = "Poisson")
+  expect_equal(rowSums(res[, c("prob1","prob2","prob3")]), rep(1, nrow(dat)),
+               tolerance = 1e-10)
 })
 
-test_that("compute_HMRFHiC_probabilities handles missing required columns", {
-  # Mock data with missing columns
-  data <- data.frame(
-    start = c(1, 10, 20),
-    interactions = c(10, 20, 30),
-    GC = c(0.5, 0.8, 0.3)
+test_that("max_interactions defaults to no cap (regression test)", {
+  ## Previously the function silently capped at 500. Make sure that default
+  ## no longer kicks in.
+  dat <- data.frame(
+    start        = 1,
+    end          = 100,
+    interactions = 1000L,          # > 500
+    GC           = 0.5,
+    TES          = 1,
+    ACC          = 0.5
   )
+  vals <- matrix(rep(0, 15), nrow = 3, ncol = 5)
+  res <- compute_HMRFHiC_probabilities(dat,
+                                       chain_betas = make_fake_chains(10, vals),
+                                       iterations  = 10,
+                                       dist        = "Poisson")
+  expect_equal(res$interactions, 1000)       # still 1000 in the returned df
+})
 
-  # Mock chain_betas with 5x5 matrices
-  chain_betas <- list(
-    list(
-      chains = list(
-        matrix(runif(25, 0.1, 1), ncol = 5),
-        matrix(runif(25, 0.1, 1), ncol = 5),
-        matrix(runif(25, 0.1, 1), ncol = 5)
-      ),
-      theta = runif(5, 0.1, 0.9),
-      size = matrix(runif(15, 1, 10), nrow = 3)
-    )
+test_that("Explicit max_interactions still truncates (backwards compat)", {
+  dat <- data.frame(
+    start        = 1,
+    end          = 100,
+    interactions = 1000L,
+    GC           = 0.5,
+    TES          = 1,
+    ACC          = 0.5
   )
+  vals <- matrix(rep(0, 15), nrow = 3, ncol = 5)
+  res <- compute_HMRFHiC_probabilities(
+    dat,
+    chain_betas      = make_fake_chains(10, vals),
+    iterations       = 10,
+    dist             = "Poisson",
+    max_interactions = 500L
+  )
+  expect_equal(res$interactions, 1000)       # data value preserved...
+  ## ...but density was evaluated at 500, so probs are still on [0,1]
+  expect_true(all(res$prob1 + res$prob2 + res$prob3 - 1 < 1e-10))
+})
 
-  # Expect an error due to missing columns
+test_that("Missing required columns raises informative error", {
+  bad <- data.frame(start = 1, end = 1)
   expect_error(
-    compute_HMRFHiC_probabilities(data, chain_betas, iterations = 5, dist = "ZINB"),
-    "The following required columns are missing"
+    compute_HMRFHiC_probabilities(bad, chain_betas = list(), iterations = 4),
+    "required columns are missing"
   )
 })
 
-test_that("compute_HMRFHiC_probabilities computes probabilities correctly for capped interactions", {
-  # Mock data with high interactions
-  data <- data.frame(
-    start = c(1, 10, 20),
-    end = c(5, 15, 30),
-    interactions = c(100, 200, 300), # Exceeds cap
-    GC = c(0.5, 0.8, 0.3),
-    TES = c(0.2, 0.5, 0.7),
-    ACC = c(0.9, 0.4, 0.6)
-  )
-
-  # Mock chain_betas with 5x5 matrices
-  chain_betas <- list(
-    list(
-      chains = list(
-        matrix(runif(25, 0.1, 1), ncol = 5),
-        matrix(runif(25, 0.1, 1), ncol = 5),
-        matrix(runif(25, 0.1, 1), ncol = 5)
-      ),
-      theta = runif(5, 0.1, 0.9),
-      size = matrix(runif(15, 1, 10), nrow = 3)
-    )
-  )
-
-  # Test function
-  result <- compute_HMRFHiC_probabilities(data, chain_betas, iterations = 5, dist = "ZINB")
-
-  # Check that interactions are capped at 500
-  expect_true(all(result$interactions <= 500))
+test_that("iterations = 4 (small) still works with proper integer burn-in", {
+  ## Old code computed burnin as iterations/2, i.e. 2.5 for odd iterations,
+  ## producing fractional matrix indices. Regression test for fix.
+  dat <- data.frame(start = 1:3, end = 11:13,
+                    interactions = c(3,5,7),
+                    GC = c(.2,.4,.6), TES = 1:3, ACC = c(.1,.5,.9))
+  vals <- matrix(0, 3, 5)
+  expect_silent(compute_HMRFHiC_probabilities(
+    dat, chain_betas = make_fake_chains(4, vals),
+    iterations = 4, dist = "Poisson"
+  ))
+  expect_silent(compute_HMRFHiC_probabilities(
+    dat, chain_betas = make_fake_chains(5, vals),
+    iterations = 5, dist = "Poisson"        # odd
+  ))
 })

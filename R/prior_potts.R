@@ -10,8 +10,8 @@
 #' gamma_prior_value()
 #'
 #' @details
-#' The function samples a single random value from a \code{Beta(10, 5)} distribution. This distribution places
-#' more mass towards the higher end of the \[0, 1\] interval (since Beta(10, 5) is skewed towards 1), indicating
+#' The function samples a single random value from a \code{Beta(2, 2)} distribution. This distribution places
+#' more mass towards the higher end of the \[0, 1\] interval (since Beta(2, 2) is skewed towards 1), indicating
 #' a prior belief that the interaction parameter is likely to encourage some degree of spatial clustering.
 #'
 #'
@@ -31,16 +31,9 @@
 #
 gamma_prior_value <- function() {
   # draw
-  value <- rbeta(1, 10, 5)
+  value <- stats::rbeta(1, 2, 2)
   
   # sanity‐check output
-  stopifnot(
-    is.numeric(value),
-    length(value) == 1,
-    is.finite(value),
-    value >= 0,
-    value <= 1
-  )
-  
+  stopifnot(is.finite(value), value >= 0, value <= 1)
   value
 }

@@ -54,27 +54,19 @@
 #' @examples
 #'
 #' # Example:
-#' N <- 100
-#' y <- rpois(N, lambda = 5)
+#' N <- 5
+#' y <- rpois(N*N, lambda = 5)
 #' x_vars <- list(
-#'   list(runif(N)), # x1
-#'   list(rnorm(N)), # x2
-#'   list(rnorm(N)), # x3
-#'   list(rnorm(N)) # x4
+#'   list(runif(N*N)), # x1
+#'   list(rnorm(N*N)), # x2
+#'   list(rnorm(N*N)), # x3
+#'   list(rnorm(N*N)) # x4
 #' )
-#' z <- sample(1:3, N, replace = TRUE)
-#' params <- c(a = 1, b = 0.5, c = -0.2, d = 2, e = 0.3)
+#' z <- sample(1:3, N*N, replace = TRUE)
+#' params <- c(a = 1, b = 0.5, c = -0.2, d = 0.1, e = 0.3)
 #'
 #' # Using data-driven priors for component 1
-#' prior_val_data <- prior_combined(
-#'   params = params,
-#'   component = 1,
-#'   y = y,
-#'   x_vars = x_vars,
-#'   z = z,
-#'   use_data_priors = TRUE,
-#'   user_fixed_priors = NULL
-#' )
+#' #' prior_combined(params, 1, y, x_vars, z, TRUE, NULL)
 #'
 #' # Using user-specified fixed priors for component 2
 #' #user_fixed_priors <- list(
@@ -102,98 +94,80 @@
 #' #  user_fixed_priors = user_fixed_priors
 #' #)
 #'
-#' 
+#'@importFrom stats dnorm sd 
 #'
 #' @export
 #'
 # prior for the sources of biases
-prior_combined <- function(params, component, y, x_vars, z, use_data_priors = TRUE, user_fixed_priors) {
-  # Extract parameters from the 'params' vector
-  a <- params[1]
-  b <- params[2]
-  c <- params[3]
-  d <- params[4]
-  e <- params[5]
-
-  # Set a small positive value to avoid using zero or negative standard deviations
-  epsilon <- 1e-6
-
-  # Subset data based on component if using data-driven priors
-  if (use_data_priors) {
-    logical_mask <- z == component
-    x1 <- x_vars[[1]][[1]][logical_mask]
-    x2 <- x_vars[[2]][[1]][logical_mask]
-    x3 <- x_vars[[3]][[1]][logical_mask]
-    x4 <- x_vars[[4]][[1]][logical_mask]
-    yc <- y[logical_mask]
-
-    # Data-driven priors: Calculate means and standard deviations from the data
-    # Different settings for meany based on the component
-    if (component == 1) {
-      inversesdy <- rgamma(1, 10, 1000)
-      sdy <- 1 / inversesdy
-      meany <- rnorm(1, 5, sdy / 10) # Used mean for component 1
-    } else if (component == 2) {
-      inversesdy <- rgamma(1, 500, 2000000)
-      sdy <- 1 / inversesdy
-      meany <- rnorm(1, 700, sdy / 10) # Used mean for component 2
-    } else {
-      inversesdy <- rgamma(1, 10, 10000)
-      sdy <- 1 / inversesdy
-      meany <- rnorm(1, 10, sdy / 10) # Used mean for component 3
+prior_combined <- function(params, component, y, x_vars, z, use_data_priors = TRUE, user_fixed_priors=NULL) {
+    
+    if (length(params) != 5L) {
+      stop("params must be a numeric vector of length 5.")
     }
-
-    inversesdx1 <- rgamma(1, (length(x1) - 1) / 2, sum((x1 - mean(x1))^2) / 2)
-    sdx1 <- 1 / inversesdx1
-
-    meanx1 <- rnorm(1, mean(x1), sdx1)
-
-    inversesdx2 <- rgamma(1, (length(x2) - 1) / 2, sum((x2 - mean(x2))^2) / 2)
-    sdx2 <- 1 / inversesdx2
-
-    meanx2 <- rnorm(1, mean(x2), sdx2)
-
-    inversesdx3 <- rgamma(1, (length(x3) - 1) / 2, sum((x3 - mean(x3))^2) / 2)
-    sdx3 <- 1 / inversesdx3
-
-    meanx3 <- rnorm(1, mean(x3), sdx3)
-
-    inversesdx4 <- rgamma(1, (length(x4) - 1) / 2, sum((x4 - mean(x4))^2) / 2)
-    sdx4 <- 1 / inversesdx4
-
-    meanx4 <- rnorm(1, mean(x4), sdx4)
-  } else {
-    # Fixed priors: Use user-provided fixed priors for the component
-    if (component == 1) {
-      priors <- user_fixed_priors$component1
-    } else if (component == 2) {
-      priors <- user_fixed_priors$component2
-    } else if (component == 3) {
-      priors <- user_fixed_priors$component3
-    } else {
-      stop("Invalid component specified!")
+    if (!component %in% 1:3) {
+      stop("Invalid component specified. Must be 1, 2, or 3.")
     }
-
-    # Assign user-provided priors
-    meany <- priors$meany
-    meanx1 <- priors$meanx1
-    meanx2 <- priors$meanx2
-    meanx3 <- priors$meanx3
-    meanx4 <- priors$meanx4
-    sdy <- priors$sdy
-    sdx1 <- priors$sdx1
-    sdx2 <- priors$sdx2
-    sdx3 <- priors$sdx3
-    sdx4 <- priors$sdx4
+    
+    a <- params[1]; b <- params[2]; c_ <- params[3]; d <- params[4]; e <- params[5]
+    epsilon <- 1e-6                          # floor on sd to avoid dnorm(..., sd = 0)
+    
+    if (isTRUE(use_data_priors)) {
+      ## ---- empirical-Bayes 
+      mask <- z == component
+      x1 <- x_vars[[1]][[1]][mask]
+      x2 <- x_vars[[2]][[1]][mask]
+      x3 <- x_vars[[3]][[1]][mask]
+      x4 <- x_vars[[4]][[1]][mask]
+      yc <- y[mask]
+      
+      ## helper: deterministic (mean, sd) on log1p scale, with safe fallbacks
+      summarise <- function(v, default_mean = 0, default_sd = 1) {
+        if (length(v) == 0L) return(c(mean = default_mean, sd = default_sd))
+        lv <- log1p(pmax(v, 0))                          # log(x + 1), non-negative
+        m  <- mean(lv)
+        s  <- if (length(lv) > 1L) stats::sd(lv) else default_sd
+        if (!is.finite(s) || s < epsilon) s <- default_sd
+        c(mean = m, sd = s)
+      }
+      
+      sy  <- summarise(yc, default_mean = 0, default_sd = 1)
+      s1  <- summarise(x1)
+      s2  <- summarise(x2)
+      s3  <- summarise(x3)
+      s4  <- summarise(x4)
+      
+      meany  <- sy[["mean"]];  sdy  <- max(sy[["sd"]],  epsilon)
+      meanx1 <- s1[["mean"]];  sdx1 <- max(s1[["sd"]], epsilon)
+      meanx2 <- s2[["mean"]];  sdx2 <- max(s2[["sd"]], epsilon)
+      meanx3 <- s3[["mean"]];  sdx3 <- max(s3[["sd"]], epsilon)
+      meanx4 <- s4[["mean"]];  sdx4 <- max(s4[["sd"]], epsilon)
+      
+    } else {
+      ## ---- user-fixed priors --------------------------------------------------
+      if (is.null(user_fixed_priors)) {
+        stop("user_fixed_priors must be provided when use_data_priors = FALSE.")
+      }
+      priors <- user_fixed_priors[[paste0("component", component)]]
+      if (is.null(priors)) {
+        stop("user_fixed_priors must contain entry 'component", component, "'.")
+      }
+      req <- c("meany","meanx1","meanx2","meanx3","meanx4",
+               "sdy","sdx1","sdx2","sdx3","sdx4")
+      missing_fields <- setdiff(req, names(priors))
+      if (length(missing_fields)) {
+        stop("user_fixed_priors$component", component,
+             " is missing fields: ", paste(missing_fields, collapse = ", "))
+      }
+      meany  <- priors$meany;  sdy  <- max(priors$sdy,  epsilon)
+      meanx1 <- priors$meanx1; sdx1 <- max(priors$sdx1, epsilon)
+      meanx2 <- priors$meanx2; sdx2 <- max(priors$sdx2, epsilon)
+      meanx3 <- priors$meanx3; sdx3 <- max(priors$sdx3, epsilon)
+      meanx4 <- priors$meanx4; sdx4 <- max(priors$sdx4, epsilon)
+    }
+    
+    dnorm(a,  meany,  sdy,  log = TRUE) +
+      dnorm(b,  meanx1, sdx1, log = TRUE) +
+      dnorm(c_, meanx2, sdx2, log = TRUE) +
+      dnorm(d,  meanx3, sdx3, log = TRUE) +
+      dnorm(e,  meanx4, sdx4, log = TRUE)
   }
-
-  # Calculate the log priors for each parameter based on the means and standard deviations
-  a_prior <- dnorm(a, meany, sdy, log = TRUE)
-  b_prior <- dnorm(b, meanx1, sdx1, log = TRUE)
-  c_prior <- dnorm(c, meanx2, sdx2, log = TRUE)
-  d_prior <- dnorm(d, meanx3, sdx3, log = TRUE)
-  e_prior <- dnorm(e, meanx4, sdx4, log = TRUE)
-
-  # Return the sum of log priors for all parameters
-  return(a_prior + b_prior + c_prior + d_prior + e_prior)
-}

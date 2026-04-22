@@ -5,14 +5,12 @@ using namespace Rcpp;
 // 
 List get_indices(const NumericMatrix &z, int comp) {
   std::vector<int> rows, cols;
-  for (int i = 0; i < z.nrow(); i++) {
-    for (int j = 0; j < z.ncol(); j++) {
+  for (int i = 0; i < z.nrow(); i++) 
+    for (int j = 0; j < z.ncol(); j++) 
       if (z(i, j) == comp) {
         rows.push_back(i);
         cols.push_back(j);
       }
-    }
-  }
   return List::create(Named("rows") = wrap(rows), Named("cols") = wrap(cols));
 }
 //
@@ -127,7 +125,7 @@ NumericMatrix pz_123(NumericMatrix z, NumericMatrix sum_neighbours, NumericMatri
                      List x_vars, double theta, NumericMatrix size_chain, int N, int iter,
                      std::string dist) {
   NumericMatrix prob_sum(N, N); // Matrix to store probabilities
-  double epsilon = 1e-6;
+  const double epsilon = 1e-300; // near machine-floor; avoids log(0) without biasing
 
   // Loop over components
   for (int comp = 1; comp <= 3; comp++) {
@@ -136,6 +134,7 @@ NumericMatrix pz_123(NumericMatrix z, NumericMatrix sum_neighbours, NumericMatri
     IntegerVector rows = indices["rows"];
     IntegerVector cols = indices["cols"];
     int num_indices = rows.size();
+    if (num_indices == 0) continue;
 
     // Extract y_comp and sum_neighbours_comp based on indices
     NumericVector y_comp(num_indices), sum_neighbours_comp(num_indices);
@@ -147,10 +146,11 @@ NumericMatrix pz_123(NumericMatrix z, NumericMatrix sum_neighbours, NumericMatri
     }
 
     // Get parameters for current component and iteration
-    double params_comp_current_iter = chain_gamma[iter];
-    NumericVector chain1 = chains[comp - 1];
+    double gamma_iter = chain_gamma[iter];
+    NumericMatrix chain_mat = chains[comp - 1];
+    NumericVector chain1 = chain_mat(iter, _);
     NumericVector pred_values = as<NumericVector>(pred_combined(chain1, z, x_vars, comp, N));
-    NumericVector lambda = exp(pred_values); // Ensure lambda is a vector
+    NumericVector lambda = exp(pred_values); // Ensure lambda is a vector and lambda = mu = exp(eta)
 
     // Retrieve the specific size for the current component and iteration
     double size_value = size_chain(comp - 1, iter);
@@ -158,51 +158,44 @@ NumericMatrix pz_123(NumericMatrix z, NumericMatrix sum_neighbours, NumericMatri
     // Compute probabilities based on component and distribution
     NumericVector prob_comp(num_indices);
     for (int k = 0; k < num_indices; k++) {
+      double pk = 0.0;
       if (dist == "ZIP" && comp == 1) {
-        // Zero-Inflated Poisson (ZIP) for component 1
-        prob_comp[k] = (y_comp[k] == 0)
-        ? theta + (1 - theta) * exp(-pred_values[k])
-          : (1 - theta) * R::dpois(y_comp[k], lambda[k], false);
+        // Zero-Inflated Poisson (ZIP) for component 1. Use lambda[k]
+        pk = (y_comp[k] == 0)
+               ? theta + (1 - theta) * std::exp(-lambda[k])
+               : (1 - theta) * R::dpois(y_comp[k], lambda[k], /*give_log=*/false);
       } else if (dist == "ZINB" && comp == 1) {
         // Zero-Inflated Negative Binomial (ZINB) for component 1
-        prob_comp[k] = (y_comp[k] == 0)
-        ? theta + (1 - theta) * exp(-lambda[k])
-          : (1 - theta) * R::dnbinom_mu(y_comp[k], size_value, lambda[k], false);
+        pk = (y_comp[k] == 0)
+               ? theta + (1 - theta) * R::dnbinom_mu(0, size_value, lambda[k], false)
+               : (1 - theta) * R::dnbinom_mu(y_comp[k], size_value, lambda[k], false);
       } else if (dist == "Poisson" || (dist == "ZIP" && comp != 1)) {
         // Poisson for all components, and for ZIP if component != 1
-        prob_comp[k] = R::dpois(y_comp[k], lambda[k], false);
+        pk = R::dpois(y_comp[k], lambda[k], false);
       } else if (dist == "NB" || (dist == "ZINB" && comp != 1)) {
         // Negative Binomial for all components, and for ZINB if component != 1
-        prob_comp[k] = R::dnbinom_mu(y_comp[k], size_value, lambda[k], false);
+        pk = R::dnbinom_mu(y_comp[k], size_value, lambda[k], false);
       } else {
         stop("Invalid distribution specified.");
       }
+      prob_comp[k] = pk;
     }
 
     // Apply neighbor interaction effect
-    prob_comp = exp(params_comp_current_iter * sum_neighbours_comp) * prob_comp;
-
-    // Assign prob_comp to prob_sum at the correct indices
-    for (int k = 0; k < num_indices; k++) {
-      int i = rows[k];
-      int j = cols[k];
-      prob_sum(i, j) = prob_comp[k];
+    // Multiply by the Potts neighbour factor (natural scale), then assign
+        for (int k = 0; k < num_indices; k++) {
+      double v = std::exp(gamma_iter * sum_neighbours_comp[k]) * prob_comp[k];
+      if (!std::isfinite(v) || v < epsilon) v = epsilon;
+      prob_sum(rows[k], cols[k]) = v;
     }
   }
 
-  // Clip values in prob_sum to avoid log(0)
+  // Clip values in prob_sum to avoid log(0). Log-transform the N x N natural-scale matrix
   for (int i = 0; i < prob_sum.nrow(); i++) {
     for (int j = 0; j < prob_sum.ncol(); j++) {
-      prob_sum(i, j) = std::max(prob_sum(i, j), epsilon);
+      double v = prob_sum(i, j);
+      prob_sum(i, j) = (v < epsilon) ? std::log (epsilon): std::log(v);
     }
   }
-
-  // Take element-wise log of prob_sum and return it as a matrix
-  for (int i = 0; i < prob_sum.nrow(); i++) {
-    for (int j = 0; j < prob_sum.ncol(); j++) {
-      prob_sum(i, j) = std::log(prob_sum(i, j));
-    }
-  }
-
-  return as<NumericMatrix>(prob_sum); // Return log of probabilities
+  return prob_sum; // Return log of probabilities
 }

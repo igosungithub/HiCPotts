@@ -82,10 +82,9 @@
 #' 
 #' theta <- 0.2
 #' size <- 10
-#' preds_comp1 <- pred_combined(params, z, x_vars, component = 1, N = N)
-#' # Compute likelihood under a Poisson model, component 1
+#' #' # Compute likelihood under a Poisson model, component 1
 #' ll_values <- likelihood_combined(
-#'   pred_combined = preds_comp1,
+#'   pred_combined = pred_combined,
 #'   params = params,
 #'   z = z,
 #'   y = y,
@@ -104,7 +103,7 @@
 #' @seealso
 #' \code{\link{dpois}}, \code{\link{dnbinom}} for related probability mass functions.
 #'
-#' @importFrom stats dgamma dnbinom dnorm dpois rbeta rgamma rnorm
+#' @importFrom stats dgamma dnbinom dnorm dpois rbeta rgamma rnorm sd var
 #'
 #'
 #'
@@ -113,36 +112,49 @@
 likelihood_combined <- function(pred_combined, params, z, y, x_vars, component, theta, size, N, dist) {
   # Subset the data based on the component
   yc <- y[z == component]
-  lambda <- pred_combined(params, z, x_vars, component, N)
-  # Calculate the likelihood based on the specified distribution
-  if (component == 1) {
-    if (dist == "ZIP") {
-      singlelikelihoods <- ifelse(yc == 0,
-        log(theta + (1 - theta) * exp(-lambda)),
-        log(1 - theta) + dpois(yc, lambda = exp(lambda), log = TRUE)
-      )
-    } else if (dist == "Poisson") {
-      singlelikelihoods <- dpois(yc, lambda = exp(lambda), log = TRUE)
-    } else if (dist == "NB") {
-      singlelikelihoods <- dnbinom(yc, size = size, mu = exp(lambda), log = TRUE)
-    } else if (dist == "ZINB") {
-      singlelikelihoods <- ifelse(yc == 0,
-        log(theta + (1 - theta) * exp(-lambda)),
-        log(1 - theta) + dnbinom(yc, size = size, mu = exp(lambda), log = TRUE)
-      )
-    } else {
-      stop("Invalid distribution specified.")
-    }
-  } else if (component == 2 || component == 3) {
-    # For components other than 1, restrict to Poisson and NB distributions
-    if (dist == "Poisson" || dist == "ZIP") {
-      singlelikelihoods <- dpois(yc[component], lambda = exp(lambda)[component], log = TRUE)
-    } else if (dist == "NB" || dist == "ZINB") {
-      singlelikelihoods <- dnbinom(yc[component], size = size, mu = exp(lambda)[component], log = TRUE)
-    } else {
-      stop("Invalid distribution specified for component > 1.")
-    }
+  
+  ## early exit: if no observations in component, likelihood contribution is 0
+  if (length(yc) == 0L) {
+    return(0)
   }
-  sumll <- sum(singlelikelihoods)
-  return(sumll)
+  
+  ## linear predictor vector (length == sum(z == component))
+  eta <- pred_combined(params, z, x_vars, component, N)
+  lambda <-exp(eta)
+  
+  ## guard against mismatched lengths
+  if (length(lambda) != length(yc)) {
+    stop(sprintf(
+      "Length mismatch in likelihood_combined: lambda has length %d but yc has length %d.",
+      length(lambda), length(yc)
+    ))
+  }
+  
+  # Calculate the likelihood based on the specified distribution
+  if (component == 1L) {
+    ll <- switch(dist,
+                 "ZIP"     = ifelse(yc == 0,
+                                    log(theta + (1 - theta) * exp(-lambda)),      
+                                    log1p(-theta) + dpois(yc, lambda = lambda, log = TRUE)),
+                 "ZINB" = ifelse(yc == 0,
+                                 log(theta + (1 - theta) * dnbinom(0, size = size, mu = lambda)),
+                                 log1p(-theta) + dnbinom(yc, size = size, mu = lambda, log = TRUE)),
+                 "Poisson" = dpois(yc, lambda = lambda, log = TRUE),
+                 "NB"      = dnbinom(yc, size = size, mu = lambda, log = TRUE),
+                 stop("Invalid distribution specified.")
+    )
+  } else if (component == 2L || component == 3L) {
+  
+    ll <- switch(dist,
+                 "Poisson" = ,
+                 "ZIP"     = dpois(yc, lambda = lambda, log = TRUE),
+                 "NB"      = ,
+                 "ZINB"    = dnbinom(yc, size = size, mu = lambda, log = TRUE),
+                 stop("Invalid distribution specified for component > 1.")
+    )
+  } else {
+    stop(sprintf("Invalid component: %s", component))
+  }
+  
+  sum(ll)
 }

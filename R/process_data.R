@@ -7,7 +7,8 @@
 #' required columns and missing values.
 #'
 #' @usage
-#' process_data(data, N, scale_max = 500, standardization_y = TRUE)
+#' process_data(data, N, scale_max = NA_real_, 
+#'      standardization_y = FALSE, pad_with_zero = FALSE)
 #'
 #' @param data A \code{data.frame} containing the following required columns:
 #'   \itemize{
@@ -24,12 +25,12 @@
 #'   into one or more \eqn{N \times N} matrices.
 #'
 #' @param scale_max A numeric value indicating the maximum scaling factor for interaction counts
-#'   when \code{standardization_y = TRUE}. Defaults to 500. After scaling, interaction counts
-#'   range between [1, \code{scale_max}].
+#'   when \code{standardization_y = TRUE}.
 #'
-#' @param standardization_y A logical value. If \code{TRUE}, interaction counts are scaled to the
-#'   range [1, \code{scale_max}] by applying a min-max normalization and rounding. If \code{FALSE},
+#' @param standardization_y A logical value. If \code{TRUE}, interaction counts are scaled by applying a min-max normalization and rounding. If \code{FALSE},
 #'   the raw interaction counts are used as provided.
+#'
+#' @param pad_with_zero Logical; if TRUE, zero-pads the last block when nrow(data) is not a multiple of N^2.
 #'
 #' @details
 #' This function processes a long-format data frame where each row represents an interaction between
@@ -77,7 +78,8 @@
 #'   TES = runif(100, 0, 1),
 #'   ACC = runif(100, 0, 1)
 #' )
-#' processed <- process_data(df, N = 10, scale_max = 500, standardization_y = TRUE)
+#' processed <- process_data(df, N = 10, scale_max = NA_real_, 
+#'   standardization_y = FALSE, pad_with_zero = FALSE)
 #' #x_vars <- processed$x_vars
 #' #y_matrices <- processed$y
 #' #str(x_vars) # Show structure of covariates
@@ -94,12 +96,13 @@
 #' #  TES = runif(400, 0, 1),
 #' #  ACC = runif(400, 0, 1)
 #' #)
-#' #processed <- process_data(large_df, N = 20, scale_max = 500, standardization_y = TRUE)
+#' #processed <- process_data(large_df, N = 20, scale_max = NA_real_, 
+#' #   standardization_y = FALSE, pad_with_zero = FALSE)
 #' #x_vars <- processed[[1]]
 #' #y_matrices <- processed[[2]]
 #' #str(x_vars)
 #' #str(y_matrices)
-#' # See vignette("HMRFHiC_vignette") for detailed examples with real Hi-C data.
+#' # See vignette("HiCPotts_vignette") for detailed examples with real Hi-C data.
 #' #
 #'
 #' @seealso
@@ -109,7 +112,7 @@
 #' @export
 #
 #
-process_data <- function(data, N, scale_max = 500, standardization_y = TRUE) {
+process_data <- function(data, N, scale_max = NA_real_, standardization_y = FALSE, pad_with_zero = FALSE) {
   # Check required columns in the data
   .check_required_columns(data)
 
@@ -118,62 +121,63 @@ process_data <- function(data, N, scale_max = 500, standardization_y = TRUE) {
     stop("The data contains NA values. Please handle missing data before processing.")
   }
 
-  # Process interactions
+  if (!is.numeric(N) || length(N) != 1L || N < 1L)
+    stop("N must be a positive integer scalar.")
+  
+  block <- N * N
+  nr    <- nrow(data)
+  if (nr %% block != 0L && !pad_with_zero){
+    stop(sprintf("nrow(data) = %d is not a multiple of N^2 = %d. ", nr, block),
+         "Either choose a different N, or pass pad_with_zero = TRUE to ",
+         "zero-pad the final (partial) matrix (not recommended for inference).")
+  }
+  ## ---- interactions -------------------------------------------------------
   y_dat <- data$interactions
-  if (standardization_y) {
-    min_val <- min(y_dat)
-    max_val <- max(y_dat)
-    scaled_data <- round((y_dat - min_val) / (max_val - min_val) * (scale_max - 1) + 1) # Scaling to range [1, 1000]
+  if (isTRUE(standardization_y)) {
+    if (is.na(scale_max) || !is.numeric(scale_max) || scale_max <= 1)
+      stop("scale_max must be a numeric > 1 when standardization_y = TRUE.")
+    warning("standardization_y = TRUE min-max rescales count data. This is ",
+            "not recommended for Poisson/NB/ZIP/ZINB regression because it ",
+            "breaks the count assumption. Use only for backwards compatibility.")
+    min_val <- min(y_dat); max_val <- max(y_dat)
+    if (isTRUE(all.equal(min_val, max_val))) {
+      warning("All interactions are equal; scaling disabled.")
+      scaled_data <- y_dat
+    } else {
+      scaled_data <- round((y_dat - min_val) / (max_val - min_val) *
+                             (scale_max - 1) + 1)
+    }
   } else {
     scaled_data <- y_dat
   }
-
-  # Process independent variables
-  x111 <- abs(data$end - data$start)
-  x222 <- data$GC
-  x333 <- data$TES
-  x444 <- data$ACC
-
-  # Convert data to symmetric matrices
-  as <- split(x111, ceiling(seq_along(x111) / (N * N)))
-  ab <- split(x222, ceiling(seq_along(x222) / (N * N)))
-  ac <- split(x333, ceiling(seq_along(x333) / (N * N)))
-  ad <- split(x444, ceiling(seq_along(x444) / (N * N)))
-  yy <- split(scaled_data, ceiling(seq_along(scaled_data) / (N * N)))
-
-
-  expand <- function(ss, N) {
-    lapply(ss, function(x) {
-      length_diff <- max(N^2 - length(x), 0)
-      matrix(c(x, rep(0, length_diff)), N, N)
+  
+  ## covariates##
+  # Genomic distance
+  x_dist <- abs(data$end - data$start)
+  x_gc   <- data$GC
+  x_te   <- data$TES
+  x_acc  <- data$ACC
+  
+  split_into_blocks <- function(v) {
+    split(v, ceiling(seq_along(v) / block))
+  }
+  
+  to_matrices <- function(lst) {
+    lapply(lst, function(x) {
+      pad <- max(block - length(x), 0L)
+      if (pad > 0L && !pad_with_zero)
+        stop("Internal error: block length mismatch and pad_with_zero is FALSE.")
+      matrix(c(x, rep(0, pad)), nrow = N, ncol = N)
     })
   }
-
-
-
-  ass <- expand(as, N)
-  abb <- expand(ab, N)
-  acc <- expand(ac, N)
-  add <- expand(ad, N)
-  y1 <- expand(yy, N)
-
-  # Prepare outputs
+  
   x_vars <- list(
-    distance = ass,
-    GC = abb,
-    TES = acc,
-    ACC = add
+    distance = to_matrices(split_into_blocks(x_dist)),
+    GC       = to_matrices(split_into_blocks(x_gc)),
+    TES      = to_matrices(split_into_blocks(x_te)),
+    ACC      = to_matrices(split_into_blocks(x_acc))
   )
-  y_sim1 <- y1
-
-  # Check for NAs in the output
-  if (anyNA(x_vars)) {
-    warning("NA values found in x_vars.")
-  }
-  if (anyNA(y_sim1)) {
-    warning("NA values found in y_sim1.")
-  }
-
-  # Return outputs
-  list(x_vars = x_vars, y = y_sim1)
+  y_out <- to_matrices(split_into_blocks(scaled_data))
+  
+  list(x_vars = x_vars, y = y_out)
 }

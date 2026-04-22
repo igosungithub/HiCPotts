@@ -1,69 +1,67 @@
-test_that("likelihood_gamma returns correct matrix dimensions", {
-  # Mock inputs
-  x <- c(0.1, 0.2, 0.3, 0.4)
-  pair_neighbours_DA_x1 <- c(1, 2, 3, 4)
-  N <- 2
-
-  # Run the function
-  result <- likelihood_gamma(x, pair_neighbours_DA_x1, N)
-
-  # Check dimensions of the result
-  expect_equal(dim(result), c(N, N))
+test_that("Returns an NxN matrix", {
+  for (N in c(2, 3, 5)) {
+    x <- rep(0.5, N * N)
+    n <- rnorm(N * N)
+    m <- likelihood_gamma(x, n, N)
+    expect_equal(dim(m), c(N, N))
+    expect_true(is.numeric(m))
+    expect_true(all(is.finite(m)))
+  }
 })
 
-test_that("likelihood_gamma normalizes probabilities correctly", {
-  # Mock inputs
-  x <- c(1, 2, 3, 4)
-  pair_neighbours_DA_x1 <- c(2, 3, 4, 5)
-  N <- 2
-
-  # Run the function
-  result <- likelihood_gamma(x, pair_neighbours_DA_x1, N)
-
-  # Check that all elements are non-negative
-  expect_true(all(result >= 0))
-
-  # Check that the sum of all elements equals 1
-  expect_equal(sum(result), 1, tolerance = 1e-6)
+test_that("Element-wise formula: m[i,j] == x[i,j] * pair_neighbours[i,j]", {
+  N <- 3
+  x <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+  n <- c(1, 2, 3, 1, 2, 3, 1, 2, 3)
+  expected <- matrix(x * n, nrow = N, ncol = N)
+  got <- likelihood_gamma(x, n, N)
+  expect_equal(got, expected, tolerance = 1e-12)
 })
 
-test_that("likelihood_gamma handles numerical stability with large inputs", {
-  # Mock inputs with large values
-  x <- c(100, 200, 300, 400)
-  pair_neighbours_DA_x1 <- c(1, 2, 3, 4)
-  N <- 2
-
-  # Run the function
-  result <- likelihood_gamma(x, pair_neighbours_DA_x1, N)
-
-  # Check that the result contains valid probabilities
-  expect_true(all(result >= 0))
-  expect_equal(sum(result), 1, tolerance = 1e-6)
+test_that("Scalar x broadcasts to the lattice", {
+  N <- 4
+  n <- sample(0:4, N * N, replace = TRUE)
+  m <- likelihood_gamma(0.3, n, N)
+  expect_equal(dim(m), c(N, N))
+  expect_equal(as.vector(m), 0.3 * n, tolerance = 1e-12)
 })
 
-test_that("likelihood_gamma handles small inputs", {
-  # Mock inputs with small values
-  x <- c(1e-5, 1e-4, 1e-3, 1e-2)
-  pair_neighbours_DA_x1 <- c(1, 1, 1, 1)
-  N <- 2
-
-  # Run the function
-  result <- likelihood_gamma(x, pair_neighbours_DA_x1, N)
-
-  # Check that the result contains valid probabilities
-  expect_true(all(result >= 0))
-  expect_equal(sum(result), 1, tolerance = 1e-6)
+test_that("Agrees with the formal Potts log-potential gamma * neighbours", {
+  N <- 5
+  set.seed(1L)
+  gamma_val <- 0.7
+  neigh     <- matrix(sample(0:4, N * N, replace = TRUE), N, N)
+  m <- likelihood_gamma(gamma_val, as.vector(neigh), N)
+  expect_equal(as.vector(m), gamma_val * as.vector(neigh),
+               tolerance = 1e-12)
 })
 
-test_that("likelihood_gamma throws error for mismatched lengths", {
-  # Mock inputs with mismatched lengths
-  x <- c(1, 2, 3)
-  pair_neighbours_DA_x1 <- c(1, 2, 3, 4)
-  N <- 2
+test_that("Zero neighbours produce zero log-potential", {
+  N <- 3
+  m <- likelihood_gamma(5.0, rep(0, N * N), N)
+  expect_equal(m, matrix(0, N, N), tolerance = 1e-12)
+})
 
-  # Expect an error
-  expect_error(
-    likelihood_gamma(x, pair_neighbours_DA_x1, N),
-    "x and pair_neighbours_DA_x1 must have the same length"
-  )
+test_that("Gamma = 0 produces zero log-potential regardless of neighbours", {
+  N <- 3
+  n <- sample(0:4, N * N, replace = TRUE)
+  m <- likelihood_gamma(0, n, N)
+  expect_equal(m, matrix(0, N, N), tolerance = 1e-12)
+})
+
+test_that("Numerically stable for large gamma (no softmax overflow)", {
+  N <- 3
+  n <- sample(0:4, N * N, replace = TRUE)
+  expect_silent(m <- likelihood_gamma(300, n, N))
+  expect_true(all(is.finite(m)))
+  expect_equal(as.vector(m), 300 * n, tolerance = 1e-12)
+})
+
+test_that("Length mismatch and bad inputs raise informative errors", {
+  expect_error(likelihood_gamma(1:3, 1:4, 2),
+               "same length")
+  expect_error(likelihood_gamma(1:3, 1:3, 2),
+               "N\\*N")
+  expect_error(likelihood_gamma(rep(0.5, 4), rep(0, 4), 0),
+               "positive integer")
 })

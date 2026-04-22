@@ -59,8 +59,8 @@
 #'   file_path      = hic,
 #'   chr            = "chr4",
 #'   start          = 1,
-#'   end            = 100000,
-#'   resolution     = 10000,
+#'   end            = 400000,
+#'   resolution     = 200000,
 #'   genome_package = "BSgenome.Dmelanogaster.UCSC.dm6",
 #'   acc_wig        = wig,
 #'   chain_file     = chain,
@@ -75,7 +75,6 @@
 #' @importFrom GenomicRanges GRanges seqnames countOverlaps findOverlaps
 #' @importFrom IRanges IRanges
 #' @importFrom rtracklayer import.chain import liftOver
-#' @importFrom strawr straw
 #' @importFrom utils read.table
 #' @importFrom stats aggregate
 #' @importFrom rhdf5 h5ls h5read
@@ -85,281 +84,279 @@ get_data <- function(file_path, chr, start, end, resolution,
                      genome_package = NULL,
                      acc_wig = NULL, chain_file = NULL,
                      te_granges = NULL) {
-  ## 0) Core package check
-  required_pkgs <- c("rhdf5", "strawr", "rtracklayer", "GenomicRanges")
-  missing_pkgs <- required_pkgs[!vapply(required_pkgs,
-    requireNamespace,
-    quietly = TRUE, FUN.VALUE = logical(1)
-  )]
-  if (length(missing_pkgs)) {
-    stop(
-      "Missing required packages:\n  - ",
-      paste(missing_pkgs, collapse = "\n  - "),
-      "\nPlease install them before running get_data()."
-    )
-  }
-
-  ## 0b) Optional BSgenome + Biostrings load for real GC
-  has_genome <- FALSE
-  genome <- NULL
+  if (grepl("\\.hic$", file_path, ignore.case = TRUE))
+    stop(".hic files are not HDF5 and are not supported by get_data(). ",
+         "Convert to .cool with cooler/hic2cool or use strawr::straw() directly.")
+  
+  required_pkgs <- c("rhdf5", "rtracklayer", "GenomicRanges")
+  missing_pkgs  <- required_pkgs[!vapply(required_pkgs,
+                                         requireNamespace,
+                                         quietly  = TRUE,
+                                         FUN.VALUE = logical(1))]
+  if (length(missing_pkgs))
+    stop("Missing required packages:\n  - ",
+         paste(missing_pkgs, collapse = "\n  - "),
+         "\nPlease install them before running get_data().")
+  
+  has_genome <- FALSE; genome <- NULL
   if (!is.null(genome_package)) {
-    if (requireNamespace("BSgenome", quietly = TRUE) &&
-      requireNamespace("Biostrings", quietly = TRUE) &&
-      requireNamespace(genome_package, quietly = TRUE)) {
-      genome <- get(genome_package)
+    if (requireNamespace("BSgenome",   quietly = TRUE) &&
+        requireNamespace("Biostrings", quietly = TRUE) &&
+        requireNamespace(genome_package, quietly = TRUE)) {
+      genome     <- get(genome_package, envir = asNamespace(genome_package))
       has_genome <- TRUE
     } else {
-      warning(
-        "Requested real GC, but BSgenome/Biostrings or ",
-        genome_package,
-        " not installed. Falling back to GC = NA."
-      )
+      warning("BSgenome/Biostrings or ", genome_package,
+              " not installed; GC will be NA.")
     }
   }
-
-  ## 1) Import DNase-I (ACC) and liftOver if provided
+  
+  ## DNase-I (ACC)
   acc_gr <- NULL
   if (!is.null(acc_wig) && !is.null(chain_file)) {
-    dnase_df <- read.table(acc_wig,
-      header = FALSE, skip = 1,
-      col.names = c("chr", "start", "end", "score"),
-      stringsAsFactors = FALSE
-    )
-    if (!grepl("^chr", dnase_df$chr[1])) {
+    dnase_df <- utils::read.table(acc_wig, header = FALSE, skip = 1,
+                                  col.names = c("chr","start","end","score"),
+                                  stringsAsFactors = FALSE)
+    if (!grepl("^chr", dnase_df$chr[1]))
       dnase_df$chr <- paste0("chr", dnase_df$chr)
-    }
-    acc_gr <- GRanges(dnase_df$chr,
-      IRanges(dnase_df$start + 1, dnase_df$end),
-      score = as.numeric(dnase_df$score)
-    )
-    chain <- import.chain(chain_file)
-    acc_gr <- unlist(liftOver(acc_gr, chain))
-    acc_gr <- acc_gr[seqnames(acc_gr) == chr]
+    acc_gr <- GenomicRanges::GRanges(dnase_df$chr,
+                                     IRanges::IRanges(dnase_df$start + 1, dnase_df$end),
+                                     score = as.numeric(dnase_df$score))
+    acc_gr <- unlist(rtracklayer::liftOver(acc_gr, rtracklayer::import.chain(chain_file)))
+    acc_gr <- acc_gr[GenomicRanges::seqnames(acc_gr) == chr]
   }
-
-  ## 2) Import TE ranges if provided
+  
+  ## TEs
   te_in <- NULL
   if (!is.null(te_granges)) {
-    if (is.character(te_granges)) {
-      te_in <- import(te_granges)
-    } else if (inherits(te_granges, "GRanges")) {
-      te_in <- te_granges
-    } else {
-      stop("`te_granges` must be a file path or a GRanges object")
-    }
-    te_in <- te_in[seqnames(te_in) == chr]
+    if (is.character(te_granges))       te_in <- rtracklayer::import(te_granges)
+    else if (inherits(te_granges, "GRanges")) te_in <- te_granges
+    else stop("`te_granges` must be a file path or a GRanges object")
+    te_in <- te_in[GenomicRanges::seqnames(te_in) == chr]
   }
-
-  ## 3) Detect .h5 schema and read raw interactions
-  hc <- h5ls(file_path)
-  has_bins <- any(hc$group == "/" & hc$name == "bins")
+  
+  ## H5 schema dispatch
+  hc <- rhdf5::h5ls(file_path)
+  has_bins      <- any(hc$group == "/" & hc$name == "bins")
   has_intervals <- any(hc$group == "/" & hc$name == "intervals")
-
+  
   read_cool <- function(fp, ch) {
-    codes_raw <- h5read(fp, "bins/chrom")
-    names_map <- h5read(fp, "chroms/name")
+    codes_raw <- rhdf5::h5read(fp, "bins/chrom")
+    names_map <- rhdf5::h5read(fp, "chroms/name")
+    add_chr_prefix <- function(x) {
+      x <- as.character(x)
+      ifelse(grepl("^chr", x), x, paste0("chr", x))
+    }
+    
     if (is.factor(codes_raw)) {
       cl <- as.character(codes_raw)
-      bin_chrom <- if (all(cl %in% names_map)) paste0("chr", cl) else cl
+      bin_chrom <- add_chr_prefix(cl)
     } else {
-      bin_chrom <- paste0("chr", names_map[codes_raw + 1])
+      bin_chrom <- add_chr_prefix(names_map[codes_raw + 1])
     }
-    bin_start <- h5read(fp, "bins/start") + 1
-    bin_end <- h5read(fp, "bins/end")
-    bins_tbl <- data.frame(
-      bin_id = seq_along(bin_chrom) - 1,
-      chrom = bin_chrom,
-      start = bin_start,
-      end = bin_end,
-      stringsAsFactors = FALSE
-    )
-    px <- data.frame(
-      bin1_id = h5read(fp, "pixels/bin1_id"),
-      bin2_id = h5read(fp, "pixels/bin2_id"),
-      count = h5read(fp, "pixels/count"),
-      stringsAsFactors = FALSE
-    )
+    bin_start <- rhdf5::h5read(fp, "bins/start") + 1
+    bin_end   <- rhdf5::h5read(fp, "bins/end")
+    bins_tbl  <- data.frame(bin_id = seq_along(bin_chrom) - 1,
+                            chrom = bin_chrom, start = bin_start, end = bin_end,
+                            stringsAsFactors = FALSE)
+    px <- data.frame(bin1_id = rhdf5::h5read(fp, "pixels/bin1_id"),
+                     bin2_id = rhdf5::h5read(fp, "pixels/bin2_id"),
+                     count   = rhdf5::h5read(fp, "pixels/count"),
+                     stringsAsFactors = FALSE)
     df1 <- merge(px, bins_tbl, by.x = "bin1_id", by.y = "bin_id", sort = FALSE)
-    names(df1)[4:6] <- c("bin1_chrom", "bin1_start", "bin1_end")
+    names(df1)[4:6] <- c("bin1_chrom","bin1_start","bin1_end")
     df2 <- merge(df1, bins_tbl, by.x = "bin2_id", by.y = "bin_id", sort = FALSE)
-    names(df2)[7:9] <- c("bin2_chrom", "bin2_start", "bin2_end")
+    names(df2)[7:9] <- c("bin2_chrom","bin2_start","bin2_end")
     subset(df2, bin1_chrom == ch & bin2_chrom == ch)
   }
-
+  
   read_interval <- function(fp, ch) {
-    ints <- h5read(fp, "intervals")
+    ints <- rhdf5::h5read(fp, "intervals")
     ints$start_list <- ints$start_list + 1
-    bins_tbl <- data.frame(
-      bin_id = seq_along(ints$start_list) - 1,
-      chrom = ints$chr_list,
-      start = ints$start_list,
-      end = ints$end_list,
-      stringsAsFactors = FALSE
-    )
-    dat <- h5read(fp, "matrix")
+    bins_tbl <- data.frame(bin_id = seq_along(ints$start_list) - 1,
+                           chrom  = ints$chr_list,
+                           start  = ints$start_list, end = ints$end_list,
+                           stringsAsFactors = FALSE)
+    dat <- rhdf5::h5read(fp, "matrix")
     rows <- rep(seq_len(dat$shape[1]) - 1, diff(dat$indptr))
-    px <- data.frame(
-      bin1_id = rows,
-      bin2_id = dat$indices,
-      count = dat$data,
-      stringsAsFactors = FALSE
-    )
+    px <- data.frame(bin1_id = rows, bin2_id = dat$indices, count = dat$data,
+                     stringsAsFactors = FALSE)
     df1 <- merge(px, bins_tbl, by.x = "bin1_id", by.y = "bin_id", sort = FALSE)
-    names(df1)[4:6] <- c("bin1_chrom", "bin1_start", "bin1_end")
+    names(df1)[4:6] <- c("bin1_chrom","bin1_start","bin1_end")
     df2 <- merge(df1, bins_tbl, by.x = "bin2_id", by.y = "bin_id", sort = FALSE)
-    names(df2)[7:9] <- c("bin2_chrom", "bin2_start", "bin2_end")
+    names(df2)[7:9] <- c("bin2_chrom","bin2_start","bin2_end")
     subset(df2, bin1_chrom == ch & bin2_chrom == ch)
   }
-
-  raw_df <- if (has_bins) {
-    read_cool(file_path, chr)
-  } else if (has_intervals) {
-    read_interval(file_path, chr)
-  } else {
-    stop("Unrecognized .h5 schema: neither /bins nor /intervals found")
+  
+  raw_df <- if (has_bins)      read_cool(file_path, chr)
+  else if (has_intervals) read_interval(file_path, chr)
+  else stop("Unrecognised .h5 schema: neither /bins nor /intervals found")
+  
+  raw_df <- subset(raw_df,
+                   bin1_start <= end & bin1_end >= start &
+                     bin2_start <= end & bin2_end >= start)
+  
+  ## If the cooler file stores only the upper triangle, mirror off-diagonal entries
+  ## so the downstream full grid is not filled with artificial lower-triangle zeros.
+  if (nrow(raw_df) > 0 &&
+      all(raw_df$bin1_start <= raw_df$bin2_start, na.rm = TRUE)) {
+    
+    offdiag <- raw_df$bin1_start != raw_df$bin2_start |
+      raw_df$bin1_end   != raw_df$bin2_end
+    
+    if (any(offdiag)) {
+      mirrored <- raw_df[offdiag, , drop = FALSE]
+      
+      tmp_chrom <- mirrored$bin1_chrom
+      tmp_start <- mirrored$bin1_start
+      tmp_end   <- mirrored$bin1_end
+      
+      mirrored$bin1_chrom <- mirrored$bin2_chrom
+      mirrored$bin1_start <- mirrored$bin2_start
+      mirrored$bin1_end   <- mirrored$bin2_end
+      
+      mirrored$bin2_chrom <- tmp_chrom
+      mirrored$bin2_start <- tmp_start
+      mirrored$bin2_end   <- tmp_end
+      
+      raw_df <- rbind(raw_df, mirrored)
+    }
   }
-
-  ## 4) Subset to the requested region
-  raw_df <- subset(
-    raw_df,
-    bin1_start <= end & bin1_end >= start &
-      bin2_start <= end & bin2_end >= start
-  )
-
-  ## 5) Determine native resolution & re-bin if needed
+  
+  ## Native resolution & re-binning
   if (nrow(raw_df) > 0) {
     native_res <- unique(raw_df$bin1_end - raw_df$bin1_start + 1)
     native_res <- if (length(native_res) > 1) min(native_res) else native_res
     obs_df <- raw_df
   } else {
     native_res <- resolution
-    obs_df <- raw_df[FALSE, ]
+    obs_df     <- raw_df[FALSE, ]
   }
-
+  
   if (native_res != resolution && nrow(obs_df) > 0) {
     if (native_res < resolution) {
+      ## finer native -> coarser target: aggregate
       obs_df$new_s1 <- floor((obs_df$bin1_start - 1) / resolution) * resolution + 1
       obs_df$new_e1 <- obs_df$new_s1 + resolution - 1
       obs_df$new_s2 <- floor((obs_df$bin2_start - 1) / resolution) * resolution + 1
       obs_df$new_e2 <- obs_df$new_s2 + resolution - 1
-      agg <- aggregate(count ~ new_s1 + new_e1 + new_s2 + new_e2,
-        data = obs_df, FUN = sum
-      )
-      obs_df <- data.frame(
-        bin1_start = agg$new_s1, bin1_end = agg$new_e1,
-        bin2_start = agg$new_s2, bin2_end = agg$new_e2,
-        count = agg$count,
-        stringsAsFactors = FALSE
-      )
+      agg <- stats::aggregate(count ~ new_s1 + new_e1 + new_s2 + new_e2,
+                              data = obs_df, FUN = sum)
+      obs_df <- data.frame(bin1_start = agg$new_s1, bin1_end = agg$new_e1,
+                           bin2_start = agg$new_s2, bin2_end = agg$new_e2,
+                           count = agg$count, stringsAsFactors = FALSE)
     } else {
-      obs_df <- do.call(rbind, apply(obs_df, 1, function(r) {
-        s1 <- as.integer(r["bin1_start"])
-        e1 <- as.integer(r["bin1_end"])
-        s2 <- as.integer(r["bin2_start"])
-        e2 <- as.integer(r["bin2_end"])
-        cnt <- as.numeric(r["count"])
-        s1v <- seq(s1, e1, by = resolution)
-        e1v <- pmin(s1v + resolution - 1, e1)
-        s2v <- seq(s2, e2, by = resolution)
-        e2v <- pmin(s2v + resolution - 1, e2)
-        comb <- expand.grid(i = seq_along(s1v), j = seq_along(s2v))
-        out <- data.frame(
-          bin1_start = s1v[comb$i], bin1_end = e1v[comb$i],
-          bin2_start = s2v[comb$j], bin2_end = e2v[comb$j],
-          stringsAsFactors = FALSE
-        )
-        w1 <- (out$bin1_end - out$bin1_start + 1) / (e1 - s1 + 1)
-        w2 <- (out$bin2_end - out$bin2_start + 1) / (e2 - s2 + 1)
-        out$count <- cnt * w1 * w2
-        out
-      }))
+      ## coarser native -> finer target: slice with weights
+      if (native_res != resolution && nrow(obs_df) > 0) {
+        if (native_res < resolution) {
+          ## finer native -> coarser target: aggregate
+          obs_df$new_s1 <- floor((obs_df$bin1_start - 1) / resolution) * resolution + 1
+          obs_df$new_e1 <- obs_df$new_s1 + resolution - 1
+          obs_df$new_s2 <- floor((obs_df$bin2_start - 1) / resolution) * resolution + 1
+          obs_df$new_e2 <- obs_df$new_s2 + resolution - 1
+          
+          agg <- stats::aggregate(count ~ new_s1 + new_e1 + new_s2 + new_e2,
+                                  data = obs_df, FUN = sum)
+          
+          obs_df <- data.frame(
+            bin1_start = agg$new_s1,
+            bin1_end   = agg$new_e1,
+            bin2_start = agg$new_s2,
+            bin2_end   = agg$new_e2,
+            count      = agg$count,
+            stringsAsFactors = FALSE
+          )
+        } else {
+          stop(
+            "Requested resolution (", resolution,
+            ") is finer than the native Hi-C matrix resolution (", native_res,
+            "). Upsampling coarse Hi-C bins into finer bins is not statistically meaningful. ",
+            "Please use resolution >= native_res."
+          )
+        }
+      }
     }
   }
-
-  ## 6) Build the full grid and seed zero counts
+  
+  ## Keep only rebinned/sliced bins fully inside the requested target region
+  if (nrow(obs_df) > 0) {
+    obs_df <- subset(
+      obs_df,
+      bin1_start >= start & bin1_end <= end &
+        bin2_start >= start & bin2_end <= end
+    )
+  }
+  
+  ## Full grid at target resolution
   bs <- seq(start, end, by = resolution)
   be <- pmin(bs + resolution - 1, end)
-  full <- expand.grid(
-    bin1_start = bs, bin2_start = bs,
-    KEEP.OUT.ATTRS = FALSE,
-    stringsAsFactors = FALSE
-  )
+  full <- expand.grid(bin1_start = bs, bin2_start = bs,
+                      KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
   full$bin1_end <- be[match(full$bin1_start, bs)]
   full$bin2_end <- be[match(full$bin2_start, bs)]
   full$interactions <- 0
   if (nrow(obs_df) > 0) {
     keys_full <- paste(full$bin1_start, full$bin1_end,
-      full$bin2_start, full$bin2_end,
-      sep = "_"
-    )
-    keys_obs <- paste(obs_df$bin1_start, obs_df$bin1_end,
-      obs_df$bin2_start, obs_df$bin2_end,
-      sep = "_"
-    )
-    full$interactions[match(keys_obs, keys_full)] <- obs_df$count
+                       full$bin2_start, full$bin2_end, sep = "_")
+    keys_obs  <- paste(obs_df$bin1_start, obs_df$bin1_end,
+                       obs_df$bin2_start, obs_df$bin2_end, sep = "_")
+    idx <- match(keys_obs, keys_full)
+    keep <- !is.na(idx)
+    full$interactions[idx[keep]] <- obs_df$count[keep]
   }
-
-  ## 7) Compute GC content
+  
+  ## GC content
   if (has_genome) {
-    full$GC <- mapply(
-      function(s1, e1, s2, e2) {
-        seq1 <- getSeq(genome, chr, s1, e1)
-        seq2 <- getSeq(genome, chr, s2, e2)
-        dna <- DNAString(paste0(as.character(seq1), as.character(seq2)))
-        mean(letterFrequency(dna, c("G", "C"), as.prob = TRUE))
-      },
-      full$bin1_start, full$bin1_end,
-      full$bin2_start, full$bin2_end
-    )
+    full$GC <- mapply(function(s1, e1, s2, e2) {
+      seq1 <- Biostrings::getSeq(genome, chr, s1, e1)
+      seq2 <- Biostrings::getSeq(genome, chr, s2, e2)
+      dna  <- Biostrings::DNAString(paste0(as.character(seq1), as.character(seq2)))
+      ## letterFrequency with c("G","C") and default OR="|" returns GC fraction.
+      sum(Biostrings::letterFrequency(dna, c("G","C"), as.prob = TRUE))
+    }, full$bin1_start, full$bin1_end, full$bin2_start, full$bin2_end)
   } else {
     full$GC <- NA_real_
   }
-
-  ## 8) Compute ACC
+  
+  ## ACC
   full$ACC <- if (is.null(acc_gr)) {
     NA_real_
   } else {
-    mapply(
-      function(s1, e1, s2, e2) {
-        g1 <- GRanges(chr, IRanges(s1, e1))
-        g2 <- GRanges(chr, IRanges(s2, e2))
-        hits1 <- findOverlaps(acc_gr, g1)
-        hits2 <- findOverlaps(acc_gr, g2)
-        m1 <- if (length(hits1) > 0) mean(acc_gr$score[queryHits(hits1)], na.rm = TRUE) else NA_real_
-        m2 <- if (length(hits2) > 0) mean(acc_gr$score[queryHits(hits2)], na.rm = TRUE) else NA_real_
-        mean(c(m1, m2), na.rm = TRUE)
-      },
-      full$bin1_start, full$bin1_end,
-      full$bin2_start, full$bin2_end
-    )
+    mapply(function(s1, e1, s2, e2) {
+      g1 <- GenomicRanges::GRanges(chr, IRanges::IRanges(s1, e1))
+      g2 <- GenomicRanges::GRanges(chr, IRanges::IRanges(s2, e2))
+      hits1 <- GenomicRanges::findOverlaps(acc_gr, g1)
+      hits2 <- GenomicRanges::findOverlaps(acc_gr, g2)
+      m1 <- if (length(hits1) > 0) mean(acc_gr$score[S4Vectors::queryHits(hits1)], na.rm = TRUE) else NA_real_
+      m2 <- if (length(hits2) > 0) mean(acc_gr$score[S4Vectors::queryHits(hits2)], na.rm = TRUE) else NA_real_
+      acc_val <- mean(c(m1, m2), na.rm = TRUE)
+      if (is.nan(acc_val)) NA_real_ else acc_val
+    }, full$bin1_start, full$bin1_end, full$bin2_start, full$bin2_end)
   }
-
-  ## 9) Compute TES
+  
+  ## TES
   full$TES <- if (is.null(te_in)) {
     NA_integer_
   } else {
-    mapply(
-      function(s1, e1, s2, e2) {
-        g1 <- GRanges(chr, IRanges(s1, e1))
-        g2 <- GRanges(chr, IRanges(s2, e2))
-        sum(countOverlaps(g1, te_in)) + sum(countOverlaps(g2, te_in))
-      },
-      full$bin1_start, full$bin1_end,
-      full$bin2_start, full$bin2_end
-    )
+    mapply(function(s1, e1, s2, e2) {
+      g1 <- GenomicRanges::GRanges(chr, IRanges::IRanges(s1, e1))
+      g2 <- GenomicRanges::GRanges(chr, IRanges::IRanges(s2, e2))
+      sum(GenomicRanges::countOverlaps(g1, te_in)) +
+        sum(GenomicRanges::countOverlaps(g2, te_in))
+    }, full$bin1_start, full$bin1_end, full$bin2_start, full$bin2_end)
   }
-
-  ## 10) Return final data.frame
+  
   data.frame(
-    start = full$bin1_start,
-    `end.i.` = full$bin1_end,
-    `start.j.` = full$bin2_start,
-    end = full$bin2_end,
-    chrom = chr,
-    GC = full$GC,
-    ACC = full$ACC,
-    TES = full$TES,
-    interactions = round(as.double(full$interactions)),
-    stringsAsFactors = FALSE
+    start        = full$bin1_start,
+    `end.i.`     = full$bin1_end,
+    `start.j.`   = full$bin2_start,
+    end          = full$bin2_end,
+    chrom        = chr,
+    GC           = full$GC,
+    ACC          = full$ACC,
+    TES          = full$TES,
+    interactions = as.double(full$interactions),   # FIX: no destructive round
+    stringsAsFactors = FALSE,
+    check.names  = FALSE
   )
 }

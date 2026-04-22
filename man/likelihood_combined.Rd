@@ -87,10 +87,9 @@ x_vars <- x_vars <- list(
 
 theta <- 0.2
 size <- 10
-preds_comp1 <- pred_combined(params, z, x_vars, component = 1, N = N)
-# Compute likelihood under a Poisson model, component 1
+#' # Compute likelihood under a Poisson model, component 1
 ll_values <- likelihood_combined(
-  pred_combined = preds_comp1,
+  pred_combined = pred_combined,
   params = params,
   z = z,
   y = y,

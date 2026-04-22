@@ -7,11 +7,10 @@ double update_theta(const NumericMatrix &z_current, const NumericMatrix &y) {
   int n1 = 0, n0 = 0;
   for (int i = 0; i < z_current.nrow(); i++) {
     for (int j = 0; j < z_current.ncol(); j++) {
-      if (z_current(i, j) == 1) {
-        n1++;
-      } else {
-        n0++;
-      }
+      if(y(i ,j) == 0){
+        if (z_current(i, j) == 1) ++n1;
+          else ++n0;
+      }    
     }
   }
   return R::rbeta(n1 + 1, n0 + 1);
@@ -154,7 +153,7 @@ List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
                                bool use_data_priors, Nullable<List> user_fixed_priors = R_NilValue,
                                std::string dist = "ZIP", Nullable<double> epsilon = R_NilValue,
                                std::string distance_metric = "manhattan",
-                               Nullable<NumericMatrix> size_start = R_NilValue, Nullable<double> theta_start = R_NilValue) {
+                               Nullable<NumericVector> size_start = R_NilValue, Nullable<double> theta_start = R_NilValue) {
    // Map x1, x2, x3, and x4 to distance, GC, TES, and ACC
   List x1 = x_vars["distance"];
   List x2 = x_vars["GC"];
@@ -183,9 +182,9 @@ List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
 
   // Initialize acceptance counts and standard deviations for components 1, 2, and 3
   std::vector<int> acceptance_counts = {0, 0, 0};
-  List sd_values = List::create(NumericVector::create(70, 50, 50, 50, 10),
-                                NumericVector::create(70, 50, 50, 50, 10),
-                                NumericVector::create(70, 20, 70, 70, 70));
+  List sd_values = List::create(NumericVector::create(1.0, 0.5, 0.5, 0.5, 0.5),
+                                NumericVector::create(1.0, 0.5, 0.5, 0.5, 0.5),
+                                NumericVector::create(1.0, 0.5, 0.5, 0.5, 0.5));
 
   // Initialize size_chain as a matrix for each component
   NumericMatrix size_chain(3, iterations + 1);  // 3 components, each with a chain of size `iterations + 1`  
@@ -193,58 +192,51 @@ List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
     if (size_start.isNotNull()) {
       NumericVector init_sizes = Rcpp::as<NumericVector>(size_start.get());
       if (init_sizes.size() != 3) stop("size_start should have 3 initial values for 3 components");
-      for (int comp = 1; comp <= 3; comp++) {
-        size_chain(comp - 1, 0) = init_sizes[comp - 1];  // Initialize each components size_chain with size_start
-      }
+      for (int c = 0; c < 3; c++) size_chain(c, 0) = init_sizes[c];
     } else {
-      stop("Error: size_start must be provided for Negative Binomial or ZINB distribution.");
+      stop("size_start must be provided for Negative Binomial or ZINB distribution.");
     }
   }
 
   // Adaptive tuning parameters for MCMC
-  double target_acceptance_rate = 0.2;
-  int adaptation_interval = 5;
-  double adaptation_scaling = 1.5;
+  double target_acceptance_rate = 0.22;
+  int adaptation_interval = 50;
+  double adaptation_scaling = 1.2;
 
 
   //Epsilon for the ABC 
-    double epsilon_value;
-    if (epsilon.isNotNull()) {
-        // Use the user-provided epsilon
-        epsilon_value = as<double>(epsilon);
-    }else {
-        // Placeholder for dynamic epsilon calculation
-        epsilon_value = 0.0; // Will be set dynamically in the ABC section based on quantile
-    }
+  bool epsilon_is_fixed = epsilon.isNotNull();
+  double epsilon_value  = epsilon_is_fixed ? as<double>(epsilon) : 0.0;
 
 
   // Initialize z with zeros and setup function calls to R
-  List z;
-  z.push_back(NumericMatrix(N, N));
   Function Neighbours_combined("Neighbours_combined");
   Function pred_combined("pred_combined");
   Function pz_123("pz_123");
   Function gamma_prior_value("gamma_prior_value");
   Function posterior_combined("posterior_combined");
-  Function proposaldensity_combined("proposaldensity_combined");
-  Function likelihood_gamma("likelihood_gamma");
   Function quantile("quantile");
 
   // Initialize first z values based on y
-  NumericMatrix z_current = as<NumericMatrix>(z[0]);
+  NumericMatrix z_current (N,N);
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < N; j++) {
       if (y(i, j) == 0) {
         z_current(i, j) = 1;
       } else {
-        z_current(i, j) = floor(R::runif(1, 4));
+        z_current(i, j) = std::floor(R::runif(1, 4));
       }
     }
   }
-  z[0] = z_current;
+
+  // ==========================================================================
+  // MAIN MCMC LOOP
+  // ==========================================================================
 
   for (int iter = 0; iter < iterations; iter++) {
-    Rcout << "Iteration: " << iter + 1 << std::endl;
+   if ((iter + 1) % 50 == 0) {
+     Rcout << "Iteration: " << iter + 1 << std::endl;
+    }
 
     // Initialize Pros matrices and fill them based on y and z_current
 
@@ -256,11 +248,11 @@ List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
           Pros2(i, j) = 1;
         } else {
           do {
-            Pros1(i, j) = floor(R::runif(1, 4));
+            Pros1(i, j) = std::floor(R::runif(1, 4));
           } while (Pros1(i, j) == z_current(i, j));
 
           do {
-            Pros2(i, j) = floor(R::runif(1, 4));
+            Pros2(i, j) = std::floor(R::runif(1, 4));
           } while (Pros2(i, j) == z_current(i, j) || Pros2(i, j) == Pros1(i, j));
         }
       }
@@ -278,20 +270,30 @@ List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
     NumericMatrix z_next(N, N);
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
-        double psum = exp(P_initials(i, j)) + exp(P_proposed1(i, j)) + exp(P_proposed2(i, j));
+       // double psum = exp(P_initials(i, j)) + exp(P_proposed1(i, j)) + exp(P_proposed2(i, j));
         if (y(i, j) == 0) {
           z_next(i, j) = 1;
-        } else {
-          double prob1 = exp(P_initials(i, j)) / psum;
-          double prob2 = exp(P_proposed1(i, j)) / psum;
-          double random_val = R::runif(0, 1);
-          z_next(i, j) = (random_val < prob1) ? 1 : ((random_val < prob1 + prob2) ? 2 : 3);
-        }
+          continue;
+        } 
+        // Use log-sum-exp for numerical stability
+        double lp0 = P_initials(i, j);
+        double lp1 = P_proposed1(i, j);
+        double lp2 = P_proposed2(i, j);
+        double m   = std::max(lp0, std::max(lp1, lp2));
+        double e0 = std::exp(lp0 - m);
+        double e1 = std::exp(lp1 - m);
+        double e2 = std::exp(lp2 - m);
+        double s  = e0 + e1 + e2;
+        double p0 = e0 / s;
+        double p1 = e1 / s;
+        double u  = R::runif(0, 1);
+         if      (u < p0)         z_next(i, j) = z_current(i, j);
+        else if (u < p0 + p1)    z_next(i, j) = Pros1(i, j);
+        else                     z_next(i, j) = Pros2(i, j);
       }
     }
-    z.push_back(z_next);
 
-    // MCMC proposal
+    // MCMC proposal update for betas, per component ---------------
 
     for (int comp = 1; comp <= 3; comp++) {
       NumericMatrix chain_matrix = chains[comp - 1];
@@ -307,46 +309,42 @@ List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
       double posterior_proposal = as<double>(posterior_combined(pred_combined, proposal, z_next, y, x_vars, comp, theta[iter], N, use_data_priors, user_fixed_priors, dist, current_size));
 
       // Call proposaldensity_combined to get log proposal densities for current and proposed states
-      double proposal_density_current = as<double>(proposaldensity_combined(chain_matrix(iter, _), comp));
-      double proposal_density_proposal = as<double>(proposaldensity_combined(proposal, comp));
-
-
-      double probab = (posterior_proposal + proposal_density_current)- (posterior_current + proposal_density_proposal);
-      if (log(R::runif(0, 1)) < probab) {
-        for (int j = 0; j < 5; j++) {
-          chain_matrix(iter + 1, j) = proposal[j];
-        }
+       // SYMMETRIC RW proposal => proposal-density ratio cancels (FIX)
+      double log_alpha = posterior_proposal - posterior_current;
+      if (std::log(R::runif(0, 1)) < log_alpha) {
+        for (int k = 0; k < 5; k++)
+          chain_matrix(iter + 1, k) = proposal[k];
         acceptance_counts[comp - 1]++;
       } else {
-        for (int j = 0; j < 5; j++) {
-          chain_matrix(iter + 1, j) = chain_matrix(iter, j);
-        }
+        for (int k = 0; k < 5; k++)
+          chain_matrix(iter + 1, k) = chain_matrix(iter, k);
       }
 
       // Update size for NB or ZINB if needed
       if (dist == "NB" || dist == "ZINB") {
-        double size_proposal = R::rnorm(current_size, 3.0);  // Propose a new size for this component
+        double size_proposal = R::rnorm(current_size, 0.5);  // Propose a new size for this component
         if (size_proposal > 0) {
-          double posterior_current_size = as<double>(posterior_combined(pred_combined, chain_matrix(iter, _), z_next, y, x_vars, comp, theta[iter], N, use_data_priors, user_fixed_priors, dist, current_size));
-          double posterior_proposal_size = as<double>(posterior_combined(pred_combined, chain_matrix(iter, _), z_next, y, x_vars, comp, theta[iter], N, use_data_priors, user_fixed_priors, dist, size_proposal));
+          double posterior_current_size = as<double>(posterior_combined(pred_combined, chain_matrix(iter + 1, _), z_next, y, x_vars, comp, theta[iter], N, use_data_priors, user_fixed_priors, dist, current_size));
+          double posterior_proposal_size = as<double>(posterior_combined(pred_combined, chain_matrix(iter + 1, _), z_next, y, x_vars, comp, theta[iter], N, use_data_priors, user_fixed_priors, dist, size_proposal));
 
-          double size_acceptance_prob = posterior_proposal_size - posterior_current_size;
-          if (log(R::runif(0, 1)) < size_acceptance_prob) {
+            double log_alpha_s = posterior_proposal_size - posterior_current_size;
+          if (std::log(R::runif(0, 1)) < log_alpha_s)
             size_chain(comp - 1, iter + 1) = size_proposal;
-          } else {
+          else
             size_chain(comp - 1, iter + 1) = current_size;
-          }
+        } else {
+          size_chain(comp - 1, iter + 1) = current_size;
         }
       }
     }
 
     // Adaptive tuning of sd_values
-    if (iter % adaptation_interval == 0 && iter <= iterations / 2) {
+    if (((iter+1) % adaptation_interval == 0) && ((iter + 1) <= iterations / 2)) {
       for (int comp = 1; comp <= 3; comp++) {
-        double acceptance_rate = (double)acceptance_counts[comp - 1] / adaptation_interval;
+        double acceptance_rate = static_cast<double>(acceptance_counts[comp - 1]) / adaptation_interval;
         NumericVector sd_component = as<NumericVector>(sd_values[comp - 1]);
         if (acceptance_rate < target_acceptance_rate) {
-          sd_component = sd_component * (1.0 / adaptation_scaling);
+          sd_component = sd_component / adaptation_scaling;
         } else if (acceptance_rate > target_acceptance_rate) {
           sd_component = sd_component * adaptation_scaling;
         }
@@ -362,7 +360,7 @@ List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
     NumericMatrix gamma_matrix(N, N); // Initialize an empty N x N matrix
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
-        gamma_matrix(i, j) = chain_gamma[iter]; // Fill all elements with gamma_current
+        gamma_matrix(i, j) = gamma_proposed; // Fill all elements with gamma_current
       }
     }
 
@@ -372,183 +370,136 @@ List run_metropolis_MCMC_betas(int N, double gamma_prior, int iterations,
     NumericMatrix beta_chain_3 = chains[2]; // Third component
     
     // Get the beta parameters for the current iteration
-    NumericVector beta_current_1 = beta_chain_1(iter, _); // 5 parameters
-    NumericVector beta_current_2 = beta_chain_2(iter, _); // 5 parameters
-    NumericVector beta_current_3 = beta_chain_3(iter, _); // 5 parameters
+    NumericVector beta_current_1 = beta_chain_1(iter+1, _); // 5 parameters
+    NumericVector beta_current_2 = beta_chain_2(iter+1, _); // 5 parameters
+    NumericVector beta_current_3 = beta_chain_3(iter+1, _); // 5 parameters
 
 
 
-   // Step 2: Compute lambda using likelihood_gamma
-    NumericMatrix neighbours = Neighbours_combined(z_current, N);
-    NumericMatrix lambda_matrix = likelihood_gamma(gamma_matrix, neighbours, N);
+    // Step 2: Compute lambda using likelihood_gamma
+    NumericMatrix neighbours = Neighbours_combined(z_next, N);
 
+    // likelihood_gamma now returns the raw Potts log-potential term gamma * neighbours
+    Function likelihood_gamma("likelihood_gamma");
+    NumericMatrix base_lambda = likelihood_gamma(gamma_matrix, neighbours, N);
 
-// Debugging: Output lambda before beta adjustments
-//Rcout << "Lambda[50,50] before beta adjustment: " << lambda_matrix(50, 50) << std::endl;
+    // Covariate matrices
+    NumericMatrix x11 = as<NumericMatrix>(x1[0]);
+    NumericMatrix x22 = as<NumericMatrix>(x2[0]);
+    NumericMatrix x33 = as<NumericMatrix>(x3[0]);
+    NumericMatrix x44 = as<NumericMatrix>(x4[0]);
 
-    // Incorporate beta parameters into lambda_matrix
-    // Use x_vars["distance"], x_vars["GC"], x_vars["TES"], x_vars["ACC"] for component 1
-    // Cast each element of the list to NumericMatrix
-        NumericMatrix x11 = as<NumericMatrix>(x1[0]);
-        NumericMatrix x22 = as<NumericMatrix>(x2[0]);
-        NumericMatrix x33 = as<NumericMatrix>(x3[0]);
-        NumericMatrix x44 = as<NumericMatrix>(x4[0]);
-    
+    // Step 3a: build lambda_matrix first
+    NumericMatrix lambda_matrix(N, N);
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
-      //  double lambda = lambda_matrix(i, j); // Start with initial lambda from likelihood_gamma
-         if (z_current(i, j) == 1) {
-            // Example: Adjust lambda using all 5 beta parameters for each component
-            lambda_matrix(i, j) += beta_current_1[0] +
-                                   (beta_current_1[1] * std::log(1 + x11(i,j))) +
-                                   (beta_current_1[2] * std::log(1 + x22(i,j)))+
-                                   (beta_current_1[3] * std::log(1 + x33(i,j))) +
-                                   (beta_current_1[4] * std::log(1 + x44(i,j)));
-                                   
-                                 
-            // Additional terms from other components, if needed
-          } else if (z_current(i, j) == 2) {
-            lambda_matrix(i, j) += beta_current_2[0]  +
-                                   (beta_current_2[1] * std::log(1 + x11(i,j))) +
-                                   (beta_current_2[2] * std::log(1 + x22(i,j))) +
-                                   (beta_current_2[3] * std::log(1 + x33(i,j))) +
-                                   (beta_current_2[4] * std::log(1 + x44(i,j)));
-    
-          } else if (z_current(i, j) == 3) {
-            lambda_matrix(i, j) += beta_current_3[0] +
-                                   (beta_current_3[1] * std::log(1 + x11(i,j))) +
-                                   (beta_current_3[2] * std::log(1 + x22(i,j))) +
-                                   (beta_current_3[3] * std::log(1 + x33(i,j))) +
-                                   (beta_current_3[4] * std::log(1 + x44(i,j)));
-          }
-           // Update the lambda_matrix with the adjusted value
-       // lambda_matrix(i, j) = lambda;
+        NumericVector b;
+        int zz = (int) z_next(i, j);
+
+        if (zz == 1) {
+          b = beta_current_1;
+        } else if (zz == 2) {
+          b = beta_current_2;
+        } else {
+          b = beta_current_3;
+        }
+
+        double eta =
+          base_lambda(i, j) +
+          b[0] +
+          b[1] * std::log1p(x11(i, j)) +
+          b[2] * std::log1p(x22(i, j)) +
+          b[3] * std::log1p(x33(i, j)) +
+          b[4] * std::log1p(x44(i, j));
+
+        double mu = std::exp(eta);
+        if (!std::isfinite(mu) || mu <= 0.0) mu = 1e-6;
+        lambda_matrix(i, j) = mu;
       }
     }
 
-// Debugging: Output lambda after beta adjustments
-//Rcout << "Lambda[50,50] after beta adjustment: " << lambda_matrix(50, 50) << std::endl;
-
-
-    // Step 3: Simulate synthetic data
+    // Step 3b: simulate synthetic data
     NumericMatrix synthetic_data(N, N);
+    double next_theta = theta[iter];
+
     for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-        
-        lambda_matrix(i, j) = exp(lambda_matrix(i, j));
-        
-        if (lambda_matrix(i, j) < 0) {
-    //Rcout << "Invalid lambda: " << lambda_matrix(i, j) << " at (" << i << ", " << j << ")" << std::endl;
-    lambda_matrix(i, j) = 1e-6; // Replace with a fallback
-        }
-        int component = z_current(i, j) - 1; // Assuming values are 1, 2, 3
-        double size = size_chain(component, iter);
+      for (int j = 0; j < N; j++) {
+        double mu = lambda_matrix(i, j);
+        int zz = (int) z_next(i, j);
+        double sz = size_chain(zz - 1, iter);
+        if (!(sz > 0.0) || std::isnan(sz)) sz = 1.0;
 
-        // Validate size
-        if (size <= 0 || std::isnan(size)) {
-          //  Rcout << "Invalid size at (" << i << ", " << j << "): " << size << std::endl;
-            size = 1e-6; // Fallback value
-        }
+        if (dist == "Poisson") {
+          synthetic_data(i, j) = R::rpois(mu);
 
+        } else if (dist == "ZIP") {
+          if (zz == 1) {
+            double u = R::runif(0, 1);
+            synthetic_data(i, j) = (u < next_theta) ? 0.0 : R::rpois(mu);
+          } else {
+            synthetic_data(i, j) = R::rpois(mu);
+          }
 
-            if (dist == "Poisson") {
-                synthetic_data(i, j) = R::rpois(lambda_matrix(i, j));
-            } else if (dist == "ZIP") {
-                double lambda = lambda_matrix(i, j);
-                double u = R::runif(0, 1);
-                synthetic_data(i, j) = (u < theta[iter]) ? 0 : R::rpois(lambda);
-            } else if (dist == "NB") {
-                //double lambda = lambda_matrix(i, j);
-                //int component = z_current(i, j) - 1; // Assuming z_current values are 1, 2, or 3
-      
-                double prob = size / (lambda_matrix(i, j) + size);
-            if (prob <= 0 || prob >= 1 || std::isnan(prob)) {
-               // Rcout << "Invalid prob at (" << i << ", " << j << "): " << prob << std::endl;
-                prob = 0.5; // Fallback value
-            }
-                synthetic_data(i, j) = R::rnbinom(size, prob);
-            } else if (dist == "ZINB") {
-                //double lambda = lambda_matrix(i, j);
-                double u = R::runif(0, 1); 
-                
-                double prob = size / (lambda_matrix(i, j) + size);
-            if (prob <= 0 || prob >= 1 || std::isnan(prob)) {
-                //Rcout << "Invalid prob at (" << i << ", " << j << "): " << prob << std::endl;
-                prob = 0.5; // Fallback value
-            }
-                synthetic_data(i, j) = (u < theta[iter]) ? 0 : R::rnbinom(size, prob); 
-            } else {
-                stop("Unsupported distribution specified.");
-            }
-            if (std::isnan(synthetic_data(i, j))) {
-               //Rcout << "NaN in synthetic_data at (" << i << ", " << j << ")" << std::endl;
-            }
+        } else if (dist == "NB") {
+          double prob = sz / (mu + sz);
+          if (!(prob > 0.0 && prob < 1.0)) prob = 0.5;
+          synthetic_data(i, j) = R::rnbinom(sz, prob);
+
+        } else if (dist == "ZINB") {
+          double prob = sz / (mu + sz);
+          if (!(prob > 0.0 && prob < 1.0)) prob = 0.5;
+
+          if (zz == 1) {
+            double u = R::runif(0, 1);
+            synthetic_data(i, j) = (u < next_theta) ? 0.0 : R::rnbinom(sz, prob);
+          } else {
+            synthetic_data(i, j) = R::rnbinom(sz, prob);
+          }
+
+        } else {
+          stop("Unsupported distribution specified.");
         }
+      }
     }
-  
-
 
 
     // Step 4: Compute distance metric (absolute difference of means)
-      double mean_y = mean(y);
-      double mean_synthetic_data = mean(synthetic_data);
-      double distance = (distance_metric == "manhattan") ? 
-                  std::abs(mean_y - mean_synthetic_data) : 
-                  std::sqrt(std::pow(mean_y - mean_synthetic_data, 2));
-
-
-    // Step 6: Calculate epsilon dynamically if not provided
-    if (epsilon.isNull()) {
-    NumericVector raw_differences;
-       // Vectors to store non-zero values
-      //NumericMatrix raw_differences(N, N);
-        // Compute the raw differences (no absolute value) between y and synthetic_data
-        for (int i = 0; i < N; i++) {
-         for (int j = 0; j < N; j++) {
-            if (!(y(i, j) == 0 && synthetic_data(i, j) == 0)) {
-                raw_differences.push_back(std::exp(std::abs(y(i, j) - synthetic_data(i, j))));
-            }
-            if (R_IsNA(y(i, j)) || R_IsNA(synthetic_data(i, j))) {
-    //Rcout << "NA detected at position (" << i << ", " << j << ")" << std::endl;
-}
-
-          }
-        }
-
-           // Ensure raw differences are non-empty
-         if (raw_differences.size() == 0) {
-            stop("Raw differences array is empty. Cannot compute epsilon.");
-          }
-        // Flatten raw_differences into a NumericVector for quantile calculation
-        NumericVector flat_differences = as<NumericVector>(raw_differences);
-        // Compute the 1% quantile
-        // Use R quantile function
-            epsilon_value = as<double>(quantile(flat_differences, 0.2)); // 1% quantile
-
-          //Rcout << "Iteration " << iter + 1 << ": raw_differences[0] = " << raw_differences(0) << std::endl;
-
-          //  Rcout << "Iteration " << iter + 1 
-          //  << ": Distance = " << distance 
-          //  << ", Epsilon = " << epsilon_value 
-          //  << ", Gamma Proposed = " << gamma_proposed 
-          //  << ", Gamma Accepted = " << (distance < epsilon_value) 
-          //  << std::endl;
-     }
-
-
-
-    // Step 7: Accept or reject gamma based on distance
-    
-    if (distance < epsilon_value) {
-      chain_gamma[iter + 1] = gamma_proposed;
-    } else {
-      chain_gamma[iter + 1] = chain_gamma[iter];
+    // Distance: MEAN ABSOLUTE difference (Manhattan) or root-mean-square
+    // (Euclidean) between observed and synthetic data. Same scale as y.
+    double dist_stat = 0.0;
+    double ssq = 0.0, sabs = 0.0;
+    int ncells = N * N;
+    for (int i = 0; i < N; i++) {
+      for (int j = 0; j < N; j++) {
+        double d = y(i, j) - synthetic_data(i, j);
+        sabs += std::abs(d);
+        ssq  += d * d;
+      }
     }
+    if (distance_metric == "euclidean") dist_stat = std::sqrt(ssq / ncells);
+    else                                dist_stat = sabs / ncells;    // "manhattan"
+ 
+    // Epsilon: data-driven default is 10% quantile of per-cell |y - syn|
+    // (same scale as dist_stat). User-supplied epsilon overrides.
+    if (!epsilon_is_fixed) {
+      NumericVector diffs(ncells);
+      int k = 0;
+      for (int i = 0; i < N; i++)
+        for (int j = 0; j < N; j++)
+          diffs[k++] = std::abs(y(i, j) - synthetic_data(i, j));
+      epsilon_value = as<double>(quantile(diffs, 0.1));
+      if (!(epsilon_value > 0.0)) epsilon_value = 1e-6;
+    }
+ 
+    chain_gamma[iter + 1] = (dist_stat < epsilon_value) ? gamma_proposed
+                                                        : chain_gamma[iter];
     
      // Update theta if using ZIP or ZINB distribution
-    if (dist == "ZIP" || dist == "ZINB") {
+    if (dist == "ZIP" || dist == "ZINB")
       theta[iter + 1] = update_theta(z_next, y);
-    }
+      else
+      theta[iter + 1] = theta[iter];
+     z_current = z_next;
 
   }
 

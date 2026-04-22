@@ -51,37 +51,17 @@
 #' @export
 #'
 proposaldensity_combined <- function(params, component) {
-  # Define mean and standard deviation values for each component
   densities <- list(
-    component1 = list(means = c(5, 1, 2, 0, 1), sds = c(1000, 1000, 1000, 1000, 1000)),
-    component2 = list(means = c(300, 2, 4, 5, 1), sds = c(5000, 7000, 1000, 9000, 1000)),
-    component3 = list(means = c(700, 2, 8, 1, 2), sds = c(2000, 5000, 5000, 2000, 1000))
+    component1 = list(means = c(5,   1, 2, 0, 1),  sds = c(1000, 1000, 1000, 1000, 1000)),
+    component2 = list(means = c(300, 2, 4, 5, 1),  sds = c(5000, 7000, 1000, 9000, 1000)),
+    component3 = list(means = c(700, 2, 8, 1, 2),  sds = c(2000, 5000, 5000, 2000, 1000))
   )
-
-  # Check if the component is valid
-  component_key <- paste0("component", component)
-  if (!component_key %in% names(densities)) {
+  key <- paste0("component", component)
+  if (!key %in% names(densities))
     stop("Invalid component specified: ", component)
-  }
-
-  # Select the appropriate mean and standard deviation values
-  selected_densities <- densities[[component_key]]
-  means <- selected_densities$means
-  sds <- selected_densities$sds
-
-  # Ensure the length of params matches the length of means and sds
-  if (length(params) != length(means) || length(params) != length(sds)) {
+  d <- densities[[key]]
+  if (length(params) != length(d$means))
     stop("The length of params does not match the expected length for component ", component, ".")
-  }
-
-  # Ensure standard deviations are valid (not negative or zero)
-  epsilon <- 1e-6 # Small positive value to ensure positivity
-  sds <- pmax(sds, epsilon)
-
-  # Calculate the proposal density for each parameter
-  proposaldensity <- mapply(dnorm, params, means, sds, MoreArgs = list(log = TRUE))
-
-  # Sum and return the log proposal densities
-  sum_proposaldensity <- sum(proposaldensity)
-  return(sum_proposaldensity)
+  sds <- pmax(d$sds, 1e-6)
+  sum(dnorm(params, d$means, sds, log = TRUE))
 }

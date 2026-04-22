@@ -1,90 +1,43 @@
-test_that("pred_combined computes predictions correctly for valid inputs across components", {
-  # Mock data
-  params <- c(1, 2, 3, 4, 5) # Example parameter values
-  z <- matrix(c(1, 1, 2, 3, 1, 3, 2, 3, 1), nrow = 3) # Example component matrix
-  x_vars <- list(
-    list(matrix(runif(9, 1, 10), nrow = 3)), # Random x1 values
-    list(matrix(runif(9, 1, 10), nrow = 3)), # Random x2 values
-    list(matrix(runif(9, 1, 10), nrow = 3)), # Random x3 values
-    list(matrix(runif(9, 1, 10), nrow = 3)) # Random x4 values
-  )
+test_that("pred_combined implements a + b*log1p(x1) + ... exactly", {
   N <- 3
-
-  for (component in 1:3) {
-    # Call pred_combined for each component
-    result <- pred_combined(params, z, x_vars, component, N)
-
-    # Validate output
-    expect_type(result, "double") # Output should be numeric
-    expect_length(result, sum(z == component)) # Length matches number of z == component
-  }
+  params <- c(0.5, 1.0, 2.0, -1.0, 0.25)
+  z <- matrix(1, N, N)
+  x1 <- matrix(seq_len(N * N), N, N)
+  x2 <- matrix(seq_len(N * N) * 2, N, N)
+  x3 <- matrix(seq_len(N * N) * 3, N, N)
+  x4 <- matrix(seq_len(N * N) * 4, N, N)
+  x_vars <- list(list(x1), list(x2), list(x3), list(x4))
+  
+  got <- pred_combined(params, z, x_vars, 1, N)
+  expected <- params[1] +
+    params[2] * log1p(as.vector(x1)) +
+    params[3] * log1p(as.vector(x2)) +
+    params[4] * log1p(as.vector(x3)) +
+    params[5] * log1p(as.vector(x4))
+  expect_equal(got, expected, tolerance = 1e-12)
 })
 
-test_that("pred_combined handles edge cases with zeros in x_vars for all components", {
-  # Mock data with zeros
-  params <- c(1, 2, 3, 4, 5)
-  z <- matrix(c(1, 1, 2, 3, 1, 3, 2, 3, 1), nrow = 3)
-  x_vars <- list(
-    list(matrix(c(0, 2, 0, 3, 4, 0, 1, 0, 0), nrow = 3)), # x1 with zeros
-    list(matrix(c(0, 0, 2, 0, 3, 0, 4, 0, 1), nrow = 3)), # x2 with zeros
-    list(matrix(c(3, 0, 1, 0, 0, 0, 2, 0, 0), nrow = 3)), # x3 with zeros
-    list(matrix(c(0, 0, 0, 1, 0, 2, 0, 3, 0), nrow = 3)) # x4 with zeros
-  )
-  N <- 3
-
-  for (component in 1:3) {
-    # Call pred_combined for each component
-    result <- pred_combined(params, z, x_vars, component, N)
-
-    # Validate output
-    expect_type(result, "double")
-    expect_true(all(is.finite(result))) # Ensure no NaN or Inf in the result
-  }
+test_that("Empty component returns numeric(0)", {
+  N <- 2
+  z <- matrix(1, N, N)
+  params <- rep(0, 5)
+  x_vars <- replicate(4, list(matrix(0, N, N)), simplify = FALSE)
+  expect_equal(pred_combined(params, z, x_vars, 2, N), numeric(0))
 })
 
-test_that("pred_combined throws an error for invalid inputs", {
-  params <- c(1, 2, 3, 4, 5)
-  z <- matrix(c(1, 1, 2, 3, 1, 3, 2, 3, 1), nrow = 3)
+test_that("Input validation fires correctly", {
   N <- 3
-
-  # Test missing x_vars
-  expect_error(
-    pred_combined(params, z, NULL, 1, N),
-    "x_vars cannot be NULL" # Expected error message
-  )
-
-  # Test mismatched x_vars dimensions
-  x_vars <- list(
-    list(matrix(runif(6, 1, 10), nrow = 2)), # Incorrect dimensions for x1
-    list(matrix(runif(9, 1, 10), nrow = 3)),
-    list(matrix(runif(9, 1, 10), nrow = 3)),
-    list(matrix(runif(9, 1, 10), nrow = 3))
-  )
-  expect_error(
-    pred_combined(params, z, x_vars, 1, N),
-    "Each x_vars matrix must have dimensions N x N" # Expected error message
-  )
-})
-
-
-test_that("pred_combined computes predictions correctly for components 2 and 3", {
-  # Mock data for components 2 and 3
-  params <- c(1, 2, 3, 4, 5)
-  z <- matrix(c(2, 2, 2, 3, 3, 3, 3, 3, 3), nrow = 3) # Only components 2 and 3
-  x_vars <- list(
-    list(matrix(runif(9, 1, 10), nrow = 3)), # Random x1 values
-    list(matrix(runif(9, 1, 10), nrow = 3)), # Random x2 values
-    list(matrix(runif(9, 1, 10), nrow = 3)), # Random x3 values
-    list(matrix(runif(9, 1, 10), nrow = 3)) # Random x4 values
-  )
-  N <- 3
-
-  for (component in 2:3) {
-    # Call pred_combined for each component
-    result <- pred_combined(params, z, x_vars, component, N)
-
-    # Validate output
-    expect_type(result, "double") # Output should be numeric
-    expect_length(result, sum(z == component)) # Length matches number of z == component
-  }
+  params <- rep(0, 5)
+  z <- matrix(1, N, N)
+  
+  expect_error(pred_combined(params, z, NULL, 1, N), "x_vars cannot be NULL")
+  expect_error(pred_combined(params, z, list(matrix(0, N, N)), 1, N),
+               "list of four")
+  x_vars_bad <- replicate(4, list(matrix(0, 2, 2)), simplify = FALSE)  # wrong N
+  expect_error(pred_combined(params, z, x_vars_bad, 1, N),
+               "N x N")
+  expect_error(pred_combined(1:3, z,
+                             replicate(4, list(matrix(0,N,N)), simplify = FALSE),
+                             1, N),
+               "length 5")
 })

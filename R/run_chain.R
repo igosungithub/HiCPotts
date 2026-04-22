@@ -181,17 +181,41 @@ run_chain_betas <- function(N,
                             dist = "ZIP",
                             epsilon = NULL,
                             distance_metric = "manhattan",
-                            mc_cores = 1) {
+                            mc_cores = 1L) {
   # y must be a list of matrices
   if (!is.list(y)) stop("'y' must be a list of N by N matrices.")
-
+  
+  required_cov <- c("distance", "GC", "TES", "ACC")
+  if (!is.list(x_vars) || !all(required_cov %in% names(x_vars))) {
+    stop("x_vars must be a named list with entries: ",
+         paste(required_cov, collapse = ", "))
+  }
+  for (cov in required_cov) {
+    if (!is.list(x_vars[[cov]]))
+      stop("x_vars$", cov, " must itself be a list of N-by-N matrices.")
+    if (length(x_vars[[cov]]) < length(y))
+      stop(sprintf("x_vars$%s has only %d matrices but y has %d datasets.",
+                   cov, length(x_vars[[cov]]), length(y)))
+  }
+  
+  ## Windows mclapply workaround: mclapply falls back to lapply silently there.
+  if (.Platform$OS.type == "windows" && mc_cores > 1L) {
+    warning("parallel::mclapply does not fork on Windows; falling back to mc_cores = 1.")
+    mc_cores <- 1L
+  }
   # dispatch each element of y to its own chain
-  results <- mclapply(seq_along(y), function(i) {
+  results <- parallel::mclapply(seq_along(y), function(i) {
+    x_vars_i <- list(
+      distance = list(x_vars$distance[[i]]),
+      GC       = list(x_vars$GC[[i]]),
+      TES      = list(x_vars$TES[[i]]),
+      ACC      = list(x_vars$ACC[[i]])
+    )
     run_metropolis_MCMC_betas(
       N = N,
       gamma_prior = gamma_prior,
       iterations = iterations,
-      x_vars = x_vars,
+      x_vars = x_vars_i,
       y = y[[i]],
       use_data_priors = use_data_priors,
       user_fixed_priors = user_fixed_priors,

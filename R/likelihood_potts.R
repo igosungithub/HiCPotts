@@ -32,13 +32,13 @@
 #'         \eqn{x * pair\_neighbours\_DA\_x1} to avoid numerical overflow.
 #'   \item Exponentiates these adjusted values and normalizes them to obtain a set of values that sum to 1,
 #'         interpreting them as probabilities or likelihood contributions.
-#'   \item Reshapes these normalized values into an \code{N x N} matrix, \code{potts_DA}, which represents
+#'   \item Reshapes these values into an \code{N x N} matrix, \code{potts_DA}, which represents
 #'         the spatial layout of likelihoods (or probabilities) under the Potts model.
 #' }
 #'
 #'
 #'
-#' @return A numeric \code{N x N} matrix of normalized probabilities corresponding to the Potts model likelihood
+#' @return A numeric \code{N x N} matrix of probabilities corresponding to the Potts model likelihood
 #' for the given interaction parameter. Each element of the matrix represents the likelihood contribution of
 #' that site/pair under the model parameterized by \code{x}.
 #'
@@ -57,30 +57,28 @@
 #' @export
 #'
 likelihood_gamma <- function(x, pair_neighbours_DA_x1, N) {
-  # Validate input dimensions
-  if (length(x) != length(pair_neighbours_DA_x1)) {
-    stop("x and pair_neighbours_DA_x1 must have the same length.")
+  if (!is.numeric(x)) {
+    stop("x must be numeric.")
   }
-  if (!is.numeric(x) || length(x) == 0) {
-    stop("x must be a nonempty numeric vector.")
+  if (!is.numeric(pair_neighbours_DA_x1)) {
+    stop("pair_neighbours_DA_x1 must be numeric.")
+  }
+  if (!is.numeric(N) || length(N) != 1L || N < 1L || N != as.integer(N)) {
+    stop("N must be a positive integer scalar.")
+  }
+  if (length(pair_neighbours_DA_x1) != N * N) {
+    stop(sprintf("length(pair_neighbours_DA_x1) = %d but N*N = %d.",
+                 length(pair_neighbours_DA_x1), N * N))
+  }
+  if (!(length(x) == 1L || length(x) == length(pair_neighbours_DA_x1))) {
+    stop("x must be scalar or the same length as pair_neighbours_DA_x1.")
   }
   
-  # Step 1: Calculate max value for numerical stability
-  max_val <- max(x * pair_neighbours_DA_x1)
+  vals <- as.numeric(x) * as.numeric(pair_neighbours_DA_x1)
   
-  # Step 2: Calculate adjusted exponents
-  exponent_diff <- x * pair_neighbours_DA_x1 - max_val
-  exp_values <- exp(exponent_diff)
+  if (any(!is.finite(vals))) {
+    stop("Computed gamma-neighbour values contain non-finite entries.")
+  }
   
-  # Step 3: Sum the adjusted exponentiated values
-  sum_exp_values <- sum(exp_values)
-  
-  # Step 4: Calculate normalized probabilities
-  a <- exp_values / sum_exp_values
-  
-  # Step 5: Create Potts DA matrix using the normalized probabilities
-  potts_DA <- matrix(a, nrow = N, ncol = N)
-  
-  return(potts_DA)
+  matrix(vals, nrow = N, ncol = N)
 }
-

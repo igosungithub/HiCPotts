@@ -17,8 +17,8 @@ neighboring sites on a lattice to take on similar states. By drawing the interac
 distribution, we impose a prior belief on the range and likely values of this parameter.
 }
 \details{
-The function samples a single random value from a \code{Beta(10, 5)} distribution. This distribution places
-more mass towards the higher end of the \[0, 1\] interval (since Beta(10, 5) is skewed towards 1), indicating
+The function samples a single random value from a \code{Beta(2, 2)} distribution. This distribution places
+more mass towards the higher end of the \[0, 1\] interval (since Beta(2, 2) is skewed towards 1), indicating
 a prior belief that the interaction parameter is likely to encourage some degree of spatial clustering.
 }
 \examples{
